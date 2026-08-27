@@ -1,24 +1,42 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { AppHeader } from "@/components/AppHeader";
+import { TotalCard } from "@/components/TotalCard";
+import { Converters } from "@/components/Converters";
+import { ExpenseList } from "@/components/ExpenseList";
+import { AddExpenseFab } from "@/components/AddExpenseSheet";
+import { useI18n } from "@/lib/i18n";
 
-// No head() here: the home route inherits title/description/og/twitter from
-// __root.tsx, and ships no og:image so serve-time hosting can inject the
-// project's social preview (explicit og:image or latest screenshot).
 export const Route = createFileRoute("/")({
-  component: Index,
+  head: () => ({
+    meta: [
+      { title: "Voyage — Travel Expense Tracker in GEL" },
+      {
+        name: "description",
+        content:
+          "Track travel expenses on the go in GEL, USD and EUR with instant conversion, category charts and a bilingual EN/KA interface.",
+      },
+      { property: "og:title", content: "Voyage — Travel Expense Tracker in GEL" },
+      {
+        property: "og:description",
+        content:
+          "Track travel expenses in GEL, USD and EUR with instant conversion and category insights.",
+      },
+    ],
+  }),
+  component: Dashboard,
 });
 
-// IMPORTANT: Replace this placeholder. See ./README.md for routing conventions.
-function Index() {
+function Dashboard() {
+  const { t } = useI18n();
   return (
-    <div
-      className="flex min-h-screen items-center justify-center"
-      style={{ backgroundColor: "#fcfbf8" }}
-    >
-      <img
-        data-lovable-blank-page-placeholder="REMOVE_THIS"
-        src="https://cdn.gpteng.co/blank-app-v1.svg"
-        alt="Your app will live here!"
-      />
-    </div>
+    <>
+      <AppHeader title={t("appName")} />
+      <main className="mx-auto w-full max-w-md space-y-5 px-4 pb-40 pt-4">
+        <TotalCard />
+        <Converters />
+        <ExpenseList />
+      </main>
+      <AddExpenseFab />
+    </>
   );
 }
