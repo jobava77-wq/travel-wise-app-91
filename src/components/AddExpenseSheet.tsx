@@ -49,7 +49,7 @@ export function AddExpenseFab() {
 
   const submit = () => {
     if (!valid) return;
-    addExpense({ amount: num, currency, category, note: note.trim() || undefined });
+    addExpense({ amount: num, currency, category, note: note.trim() });
     reset();
     setOpen(false);
   };
