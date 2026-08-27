@@ -65,7 +65,7 @@ export function AddExpenseFab() {
       <DrawerTrigger asChild>
         <button
           aria-label={t("addExpense")}
-          className="fixed bottom-[76px] left-1/2 z-40 flex h-14 -translate-x-1/2 items-center gap-2 rounded-full bg-primary px-6 text-sm font-bold text-primary-foreground shadow-[var(--shadow-fab)] transition-transform active:scale-95"
+          className="fixed bottom-[76px] left-1/2 z-40 flex h-14 -translate-x-1/2 items-center gap-2 whitespace-nowrap rounded-full bg-primary px-6 text-sm font-bold text-primary-foreground shadow-[var(--shadow-fab)] transition-transform active:scale-95"
         >
           <Plus className="size-5" strokeWidth={2.6} />
           {t("addExpense")}
