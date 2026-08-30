@@ -145,14 +145,16 @@ function RootComponent() {
   return (
     <QueryClientProvider client={queryClient}>
       <I18nProvider>
-        <ExpensesProvider>
-          <div className="min-h-screen bg-background">
-            {/* Required: nested routes render here. Removing <Outlet /> breaks all child routes. */}
-            <Outlet />
-          </div>
-          <BottomNav />
-          <Toaster position="top-center" />
-        </ExpensesProvider>
+        <RatesProvider>
+          <ExpensesProvider>
+            <div className="min-h-screen bg-background">
+              {/* Required: nested routes render here. Removing <Outlet /> breaks all child routes. */}
+              <Outlet />
+            </div>
+            <BottomNav />
+            <Toaster position="top-center" />
+          </ExpensesProvider>
+        </RatesProvider>
       </I18nProvider>
     </QueryClientProvider>
   );
