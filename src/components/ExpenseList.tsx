@@ -1,10 +1,12 @@
 import { Receipt, X } from "lucide-react";
+import { toast } from "sonner";
 import { useExpenses, categoryById, formatGel, CURRENCY_SYMBOL } from "@/lib/expenses";
 import { useI18n } from "@/lib/i18n";
+import { Skeleton } from "@/components/ui/skeleton";
 
 export function ExpenseList() {
   const { t, lang } = useI18n();
-  const { expenses, removeExpense } = useExpenses();
+  const { expenses, removeExpense, loading } = useExpenses();
 
   return (
     <section>
@@ -12,7 +14,20 @@ export function ExpenseList() {
         {t("expenses")}
       </h2>
 
-      {expenses.length === 0 ? (
+      {loading ? (
+        <ul className="ios-card divide-y divide-border overflow-hidden">
+          {[0, 1, 2].map((i) => (
+            <li key={i} className="flex items-center gap-3 px-4 py-3">
+              <Skeleton className="size-10 shrink-0 rounded-xl" />
+              <div className="flex-1 space-y-2">
+                <Skeleton className="h-3 w-24 rounded-full" />
+                <Skeleton className="h-2.5 w-16 rounded-full" />
+              </div>
+              <Skeleton className="h-4 w-16 rounded-full" />
+            </li>
+          ))}
+        </ul>
+      ) : expenses.length === 0 ? (
         <div className="ios-card flex flex-col items-center gap-2 px-6 py-10 text-center">
           <div className="flex size-12 items-center justify-center rounded-full bg-secondary">
             <Receipt className="size-6 text-muted-foreground" />
