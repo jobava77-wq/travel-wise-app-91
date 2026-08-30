@@ -47,6 +47,13 @@ const dict = {
     en: "Create a trip to start tracking expenses.",
     ka: "შექმენით მოგზაურობა ხარჯების აღრიცხვისთვის.",
   },
+  ratesHint: {
+    en: "Edit rates manually — totals recalculate instantly.",
+    ka: "შეასწორეთ კურსი ხელით — ჯამი მაშინვე გადაითვლება.",
+  },
+  resetRates: { en: "Reset to default rates", ka: "კურსის დაბრუნება" },
+  syncError: { en: "Sync failed, please try again", ka: "სინქრონიზაცია ვერ შესრულდა" },
+  synced: { en: "Synced across devices", ka: "სინქრონიზებულია მოწყობილობებზე" },
 
   cat_tickets: { en: "Tickets", ka: "ბილეთები" },
   cat_luggage: { en: "Luggage", ka: "ბარგი" },

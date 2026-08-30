@@ -9,22 +9,15 @@ import {
   MapPin,
   type LucideIcon,
 } from "lucide-react";
+import { supabase } from "@/integrations/supabase/client";
 import type { TKey, Lang } from "./i18n";
+import { CURRENCY_SYMBOL, DEFAULT_RATES, useRates, type Currency, type Rates } from "./rates";
 
-export type Currency = "GEL" | "USD" | "EUR";
+export { CURRENCY_SYMBOL, DEFAULT_RATES, useRates };
+export type { Currency, Rates };
 
-/** Fixed mock exchange rates -> GEL */
-export const RATES: Record<Currency, number> = {
-  GEL: 1,
-  USD: 2.7,
-  EUR: 2.95,
-};
-
-export const CURRENCY_SYMBOL: Record<Currency, string> = {
-  GEL: "₾",
-  USD: "$",
-  EUR: "€",
-};
+/** Shared family trip used when no other trip is selected */
+export const DEFAULT_TRIP_ID = "cyprus-2026";
 
 export type CategoryId =
   | "tickets"
@@ -50,7 +43,8 @@ export const CATEGORIES: {
   { id: "local", key: "cat_local", icon: MapPin, color: "var(--chart-7)" },
 ];
 
-export const categoryById = (id: CategoryId) => CATEGORIES.find((c) => c.id === id)!;
+export const categoryById = (id: CategoryId) =>
+  CATEGORIES.find((c) => c.id === id) ?? CATEGORIES[0]!;
 
 export type Expense = {
   id: string;
@@ -72,8 +66,8 @@ export type Trip = {
   createdAt: number;
 };
 
-export const toGel = (amount: number, currency: Currency) =>
-  Math.round(amount * RATES[currency] * 100) / 100;
+export const toGel = (amount: number, currency: Currency, rates: Rates = DEFAULT_RATES) =>
+  Math.round(amount * (rates[currency] || 1) * 100) / 100;
 
 export const formatGel = (value: number) =>
   `${value.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ₾`;
@@ -95,13 +89,46 @@ export function formatTripPeriod(trip: Trip, lang: Lang = "en") {
   return `${left} – ${right}, ${end.getFullYear()}`;
 }
 
+type ExpenseRow = {
+  id: string;
+  trip_id: string;
+  title: string | null;
+  amount: number | string;
+  currency: string;
+  category: string;
+  created_at: string;
+};
+
+type TripRow = {
+  id: string;
+  name: string;
+  start_date: string;
+  end_date: string;
+  created_at: string;
+};
+
+const mapTrip = (r: TripRow): Trip => ({
+  id: r.id,
+  name: r.name,
+  startDate: r.start_date,
+  endDate: r.end_date,
+  createdAt: new Date(r.created_at).getTime(),
+});
+
+const asCurrency = (v: string): Currency =>
+  v === "USD" || v === "EUR" || v === "GEL" ? v : "GEL";
+
+const asCategory = (v: string): CategoryId =>
+  (CATEGORIES.find((c) => c.id === v)?.id ?? "tickets") as CategoryId;
+
 type Ctx = {
+  loading: boolean;
   trips: Trip[];
   activeTrip: Trip | null;
   activeTripId: string | null;
   setActiveTripId: (id: string) => void;
-  addTrip: (t: Omit<Trip, "id" | "createdAt">) => Trip;
-  removeTrip: (id: string) => void;
+  addTrip: (t: Omit<Trip, "id" | "createdAt">) => Promise<void>;
+  removeTrip: (id: string) => Promise<void>;
   /** expenses of the active trip only */
   expenses: Expense[];
   allExpenses: Expense[];
@@ -109,68 +136,115 @@ type Ctx = {
   byCategory: { id: CategoryId; value: number; color: string }[];
   tripTotal: (tripId: string) => number;
   tripCount: (tripId: string) => number;
-  addExpense: (e: Omit<Expense, "id" | "createdAt" | "amountGel" | "tripId">) => void;
-  removeExpense: (id: string) => void;
-  clearAll: () => void;
+  addExpense: (
+    e: Pick<Expense, "amount" | "currency" | "category"> & { note?: string },
+  ) => Promise<void>;
+  removeExpense: (id: string) => Promise<void>;
+  clearAll: () => Promise<void>;
 };
 
 const ExpensesContext = createContext<Ctx | null>(null);
 
-const STORAGE_KEY = "expenses";
-const TRIPS_KEY = "trips";
 const ACTIVE_KEY = "activeTripId";
 
-const rid = () => Math.random().toString(36).slice(2);
+const slugify = (name: string) =>
+  name
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/(^-|-$)/g, "")
+    .slice(0, 40) || "trip";
 
 export function ExpensesProvider({ children }: { children: ReactNode }) {
-  const [expenses, setExpenses] = useState<Expense[]>([]);
-  const [trips, setTrips] = useState<Trip[]>([]);
-  const [activeTripId, setActiveTripId] = useState<string | null>(null);
-  const [hydrated, setHydrated] = useState(false);
+  const { rates } = useRates();
+  const [rows, setRows] = useState<ExpenseRow[]>([]);
+  const [tripRows, setTripRows] = useState<TripRow[]>([]);
+  const [activeTripId, setActiveTripIdState] = useState<string | null>(null);
+  const [loading, setLoading] = useState(true);
 
+  // initial fetch
   useEffect(() => {
-    try {
-      const rawTrips = window.localStorage.getItem(TRIPS_KEY);
-      let loadedTrips: Trip[] = rawTrips ? (JSON.parse(rawTrips) as Trip[]) : [];
-      const rawExp = window.localStorage.getItem(STORAGE_KEY);
-      let loadedExp: Expense[] = rawExp ? (JSON.parse(rawExp) as Expense[]) : [];
+    let alive = true;
+    (async () => {
+      const [tripsRes, expensesRes] = await Promise.all([
+        supabase.from("trips").select("*").order("created_at", { ascending: false }),
+        supabase.from("expenses").select("*").order("created_at", { ascending: false }),
+      ]);
+      if (!alive) return;
+      const trips = (tripsRes.data ?? []) as TripRow[];
+      setTripRows(trips);
+      setRows((expensesRes.data ?? []) as ExpenseRow[]);
 
-      // migrate legacy expenses that were not linked to a trip
-      const orphans = loadedExp.filter((e) => !e.tripId);
-      if (orphans.length > 0) {
-        let target = loadedTrips[0];
-        if (!target) {
-          const today = new Date().toISOString().slice(0, 10);
-          target = { id: rid(), name: "My Trip", startDate: today, endDate: today, createdAt: Date.now() };
-          loadedTrips = [target];
-        }
-        loadedExp = loadedExp.map((e) => (e.tripId ? e : { ...e, tripId: target.id }));
-      }
-
-      const savedActive = window.localStorage.getItem(ACTIVE_KEY);
+      const saved = window.localStorage.getItem(ACTIVE_KEY);
       const active =
-        loadedTrips.find((tr) => tr.id === savedActive)?.id ?? loadedTrips[0]?.id ?? null;
-
-      setTrips(loadedTrips);
-      setExpenses(loadedExp);
-      setActiveTripId(active);
-    } catch {
-      /* ignore */
-    }
-    setHydrated(true);
+        trips.find((tr) => tr.id === saved)?.id ??
+        trips.find((tr) => tr.id === DEFAULT_TRIP_ID)?.id ??
+        trips[0]?.id ??
+        null;
+      setActiveTripIdState(active);
+      setLoading(false);
+    })();
+    return () => {
+      alive = false;
+    };
   }, []);
 
+  // realtime sync
   useEffect(() => {
-    if (!hydrated) return;
-    window.localStorage.setItem(STORAGE_KEY, JSON.stringify(expenses));
-    window.localStorage.setItem(TRIPS_KEY, JSON.stringify(trips));
-    if (activeTripId) window.localStorage.setItem(ACTIVE_KEY, activeTripId);
-    else window.localStorage.removeItem(ACTIVE_KEY);
-  }, [expenses, trips, activeTripId, hydrated]);
+    const channel = supabase
+      .channel("voyage-sync")
+      .on("postgres_changes", { event: "*", schema: "public", table: "expenses" }, (payload) => {
+        setRows((prev) => {
+          if (payload.eventType === "DELETE") {
+            const old = payload.old as { id?: string };
+            return prev.filter((r) => r.id !== old.id);
+          }
+          const row = payload.new as ExpenseRow;
+          const rest = prev.filter((r) => r.id !== row.id);
+          return [row, ...rest].sort((a, b) => b.created_at.localeCompare(a.created_at));
+        });
+      })
+      .on("postgres_changes", { event: "*", schema: "public", table: "trips" }, (payload) => {
+        setTripRows((prev) => {
+          if (payload.eventType === "DELETE") {
+            const old = payload.old as { id?: string };
+            return prev.filter((r) => r.id !== old.id);
+          }
+          const row = payload.new as TripRow;
+          const rest = prev.filter((r) => r.id !== row.id);
+          return [row, ...rest].sort((a, b) => b.created_at.localeCompare(a.created_at));
+        });
+      })
+      .subscribe();
+
+    return () => {
+      void supabase.removeChannel(channel);
+    };
+  }, []);
+
+  const setActiveTripId = (id: string) => {
+    setActiveTripIdState(id);
+    window.localStorage.setItem(ACTIVE_KEY, id);
+  };
 
   const value = useMemo<Ctx>(() => {
+    const trips = tripRows.map(mapTrip);
+    const expensesAll: Expense[] = rows.map((r) => {
+      const currency = asCurrency(r.currency);
+      const amount = Number(r.amount) || 0;
+      return {
+        id: r.id,
+        tripId: r.trip_id,
+        amount,
+        currency,
+        amountGel: toGel(amount, currency, rates),
+        category: asCategory(r.category),
+        note: r.title ?? undefined,
+        createdAt: new Date(r.created_at).getTime(),
+      };
+    });
+
     const activeTrip = trips.find((tr) => tr.id === activeTripId) ?? null;
-    const tripExpenses = activeTrip ? expenses.filter((e) => e.tripId === activeTrip.id) : [];
+    const tripExpenses = activeTrip ? expensesAll.filter((e) => e.tripId === activeTrip.id) : [];
     const sum = (list: Expense[]) =>
       Math.round(list.reduce((s, e) => s + e.amountGel, 0) * 100) / 100;
 
@@ -181,47 +255,75 @@ export function ExpensesProvider({ children }: { children: ReactNode }) {
     })).filter((c) => c.value > 0);
 
     return {
+      loading,
       trips,
       activeTrip,
       activeTripId,
       setActiveTripId,
-      addTrip: (t) => {
-        const trip: Trip = { ...t, id: rid(), createdAt: Date.now() };
-        setTrips((prev) => [trip, ...prev]);
-        setActiveTripId(trip.id);
-        return trip;
+      addTrip: async (t) => {
+        const id = `${slugify(t.name)}-${Math.random().toString(36).slice(2, 6)}`;
+        const { data, error } = await supabase
+          .from("trips")
+          .insert({ id, name: t.name, start_date: t.startDate, end_date: t.endDate })
+          .select("*")
+          .single();
+        if (error) throw error;
+        const row = data as TripRow;
+        setTripRows((prev) => [row, ...prev.filter((r) => r.id !== row.id)]);
+        setActiveTripId(row.id);
       },
-      removeTrip: (id) => {
-        setTrips((prev) => {
+      removeTrip: async (id) => {
+        const { error } = await supabase.from("trips").delete().eq("id", id);
+        if (error) throw error;
+        setTripRows((prev) => {
           const next = prev.filter((tr) => tr.id !== id);
-          setActiveTripId((cur) => (cur === id ? next[0]?.id ?? null : cur));
+          if (activeTripId === id) {
+            const fallback = next[0]?.id ?? null;
+            setActiveTripIdState(fallback);
+            if (fallback) window.localStorage.setItem(ACTIVE_KEY, fallback);
+            else window.localStorage.removeItem(ACTIVE_KEY);
+          }
           return next;
         });
-        setExpenses((prev) => prev.filter((e) => e.tripId !== id));
+        setRows((prev) => prev.filter((r) => r.trip_id !== id));
       },
       expenses: tripExpenses,
-      allExpenses: expenses,
+      allExpenses: expensesAll,
       totalGel: sum(tripExpenses),
       byCategory,
-      tripTotal: (tripId) => sum(expenses.filter((e) => e.tripId === tripId)),
-      tripCount: (tripId) => expenses.filter((e) => e.tripId === tripId).length,
-      addExpense: (e) => {
-        if (!activeTripId) return;
-        setExpenses((prev) => [
-          {
-            ...e,
-            tripId: activeTripId,
-            amountGel: toGel(e.amount, e.currency),
-            id: rid(),
-            createdAt: Date.now(),
-          },
-          ...prev,
-        ]);
+      tripTotal: (tripId) => sum(expensesAll.filter((e) => e.tripId === tripId)),
+      tripCount: (tripId) => expensesAll.filter((e) => e.tripId === tripId).length,
+      addExpense: async (e) => {
+        const tripId = activeTripId ?? DEFAULT_TRIP_ID;
+        const { data, error } = await supabase
+          .from("expenses")
+          .insert({
+            trip_id: tripId,
+            title: e.note ?? "",
+            amount: e.amount,
+            currency: e.currency,
+            category: e.category,
+          })
+          .select("*")
+          .single();
+        if (error) throw error;
+        const row = data as ExpenseRow;
+        setRows((prev) => [row, ...prev.filter((r) => r.id !== row.id)]);
       },
-      removeExpense: (id) => setExpenses((prev) => prev.filter((e) => e.id !== id)),
-      clearAll: () => setExpenses([]),
+      removeExpense: async (id) => {
+        setRows((prev) => prev.filter((r) => r.id !== id));
+        const { error } = await supabase.from("expenses").delete().eq("id", id);
+        if (error) throw error;
+      },
+      clearAll: async () => {
+        const tripId = activeTripId;
+        if (!tripId) return;
+        setRows((prev) => prev.filter((r) => r.trip_id !== tripId));
+        const { error } = await supabase.from("expenses").delete().eq("trip_id", tripId);
+        if (error) throw error;
+      },
     };
-  }, [expenses, trips, activeTripId]);
+  }, [rows, tripRows, activeTripId, loading, rates]);
 
   return <ExpensesContext.Provider value={value}>{children}</ExpensesContext.Provider>;
 }

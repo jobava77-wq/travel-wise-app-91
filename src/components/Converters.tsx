@@ -1,13 +1,14 @@
 import { useState } from "react";
 import { ArrowRight } from "lucide-react";
-import { RATES, type Currency, CURRENCY_SYMBOL } from "@/lib/expenses";
+import { CURRENCY_SYMBOL, useRates, type Currency } from "@/lib/rates";
 import { useI18n } from "@/lib/i18n";
 import { Input } from "@/components/ui/input";
 
 function Converter({ from }: { from: Extract<Currency, "EUR" | "USD"> }) {
+  const { rates } = useRates();
   const [value, setValue] = useState("100");
   const num = Number(value.replace(",", ".")) || 0;
-  const gel = num * RATES[from];
+  const gel = num * rates[from];
 
   return (
     <div className="ios-card flex-1 p-4">
@@ -26,11 +27,9 @@ function Converter({ from }: { from: Extract<Currency, "EUR" | "USD"> }) {
           className="tabular h-9 rounded-xl border-0 bg-secondary px-2.5 text-base font-bold focus-visible:ring-2"
         />
       </div>
-      <p className="tabular mt-2.5 text-lg font-extrabold text-primary">
-        {gel.toFixed(2)} ₾
-      </p>
+      <p className="tabular mt-2.5 text-lg font-extrabold text-primary">{gel.toFixed(2)} ₾</p>
       <p className="tabular mt-0.5 text-[11px] font-medium text-muted-foreground">
-        1 {from} = {RATES[from].toFixed(2)} ₾
+        1 {from} = {rates[from].toFixed(2)} ₾
       </p>
     </div>
   );

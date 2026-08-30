@@ -1,12 +1,28 @@
 import { PieChart, Pie, Cell, ResponsiveContainer } from "recharts";
 import { useExpenses, formatGel, categoryById } from "@/lib/expenses";
 import { useI18n } from "@/lib/i18n";
+import { Skeleton } from "@/components/ui/skeleton";
 
 export function TotalCard() {
   const { t } = useI18n();
-  const { totalGel, byCategory } = useExpenses();
+  const { totalGel, byCategory, loading } = useExpenses();
   const isEmpty = byCategory.length === 0;
   const data = isEmpty ? [{ id: "empty", value: 1, color: "var(--muted)" }] : byCategory;
+
+  if (loading) {
+    return (
+      <section className="ios-card p-5">
+        <div className="flex items-center gap-4">
+          <div className="min-w-0 flex-1 space-y-3">
+            <Skeleton className="h-3 w-24 rounded-full" />
+            <Skeleton className="h-9 w-40 rounded-xl" />
+            <Skeleton className="h-3 w-20 rounded-full" />
+          </div>
+          <Skeleton className="size-[104px] shrink-0 rounded-full" />
+        </div>
+      </section>
+    );
+  }
 
   return (
     <section className="ios-card p-5">
