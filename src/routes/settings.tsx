@@ -3,8 +3,9 @@ import { Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { AppHeader, LanguageToggle } from "@/components/AppHeader";
 import { Button } from "@/components/ui/button";
+import { RatesCard } from "@/components/RatesCard";
 import { useI18n } from "@/lib/i18n";
-import { RATES, useExpenses } from "@/lib/expenses";
+import { useExpenses } from "@/lib/expenses";
 
 export const Route = createFileRoute("/settings")({
   head: () => ({
@@ -12,12 +13,13 @@ export const Route = createFileRoute("/settings")({
       { title: "Settings — Voyage Expense Tracker" },
       {
         name: "description",
-        content: "Switch between English and Georgian, review exchange rates and clear your data.",
+        content:
+          "Switch between English and Georgian, set your own EUR and USD exchange rates and clear trip data.",
       },
       { property: "og:title", content: "Settings — Voyage Expense Tracker" },
       {
         property: "og:description",
-        content: "Switch between English and Georgian, review exchange rates and clear your data.",
+        content: "Switch languages, edit exchange rates manually and manage your synced trip data.",
       },
     ],
   }),
@@ -37,26 +39,18 @@ function SettingsPage() {
           <LanguageToggle />
         </section>
 
-        <section className="ios-card p-5">
-          <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-            {t("rates")}
-          </p>
-          <ul className="mt-3 space-y-2">
-            {(["USD", "EUR"] as const).map((c) => (
-              <li key={c} className="tabular flex justify-between text-sm font-bold">
-                <span>1 {c}</span>
-                <span className="text-primary">{RATES[c].toFixed(2)} ₾</span>
-              </li>
-            ))}
-          </ul>
-        </section>
+        <RatesCard />
 
         <Button
           variant="secondary"
           className="h-12 w-full rounded-2xl font-bold text-destructive"
-          onClick={() => {
-            clearAll();
-            toast.success(t("cleared"));
+          onClick={async () => {
+            try {
+              await clearAll();
+              toast.success(t("cleared"));
+            } catch {
+              toast.error(t("syncError"));
+            }
           }}
         >
           <Trash2 className="size-4" />
