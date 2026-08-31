@@ -29,7 +29,8 @@ export const Route = createFileRoute("/trips")({
 
 function Trips() {
   const { t, lang } = useI18n();
-  const { trips, activeTripId, setActiveTripId, removeTrip, tripTotal, tripCount } = useExpenses();
+  const { trips, activeTripId, setActiveTripId, removeTrip, tripTotal, tripCount, loading } =
+    useExpenses();
 
   return (
     <>

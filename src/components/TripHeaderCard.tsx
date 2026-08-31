@@ -1,12 +1,25 @@
 import { CalendarDays, MapPin, Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { CreateTripSheet } from "@/components/CreateTripSheet";
+import { Skeleton } from "@/components/ui/skeleton";
 import { useI18n } from "@/lib/i18n";
 import { formatTripPeriod, useExpenses } from "@/lib/expenses";
 
 export function TripHeaderCard() {
   const { t, lang } = useI18n();
-  const { activeTrip } = useExpenses();
+  const { activeTrip, loading } = useExpenses();
+
+  if (loading) {
+    return (
+      <section className="ios-card flex items-center gap-3 p-5">
+        <Skeleton className="size-11 shrink-0 rounded-2xl" />
+        <div className="flex-1 space-y-2">
+          <Skeleton className="h-5 w-40 rounded-lg" />
+          <Skeleton className="h-3 w-28 rounded-full" />
+        </div>
+      </section>
+    );
+  }
 
   if (!activeTrip) {
     return (
