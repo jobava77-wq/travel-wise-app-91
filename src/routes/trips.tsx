@@ -45,7 +45,17 @@ function Trips() {
           }
         />
 
-        {trips.length === 0 ? (
+        {loading ? (
+          <ul className="space-y-3">
+            {[0, 1].map((i) => (
+              <li key={i} className="ios-card space-y-2 p-4">
+                <Skeleton className="h-4 w-40 rounded-lg" />
+                <Skeleton className="h-3 w-28 rounded-full" />
+                <Skeleton className="h-4 w-24 rounded-lg" />
+              </li>
+            ))}
+          </ul>
+        ) : trips.length === 0 ? (
           <div className="ios-card flex flex-col items-center gap-2 px-6 py-12 text-center">
             <div className="flex size-12 items-center justify-center rounded-full bg-secondary">
               <Map className="size-6 text-muted-foreground" />
