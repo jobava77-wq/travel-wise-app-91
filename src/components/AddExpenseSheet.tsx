@@ -190,9 +190,10 @@ export function AddExpenseFab() {
             </Button>
             <Button
               className="h-12 flex-1 rounded-2xl font-bold"
-              disabled={!valid}
-              onClick={submit}
+              disabled={!valid || saving}
+              onClick={() => void submit()}
             >
+              {saving && <Loader2 className="size-4 animate-spin" />}
               {t("save")}
             </Button>
           </div>
