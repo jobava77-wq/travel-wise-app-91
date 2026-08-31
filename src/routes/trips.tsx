@@ -104,8 +104,9 @@ function Trips() {
                     </button>
                     <button
                       onClick={() => {
-                        removeTrip(trip.id);
-                        toast.success(t("tripDeleted"));
+                        removeTrip(trip.id)
+                          .then(() => toast.success(t("tripDeleted")))
+                          .catch(() => toast.error(t("syncError")));
                       }}
                       aria-label={t("deleteTrip")}
                       className="shrink-0 rounded-full p-2 text-muted-foreground transition-colors hover:text-destructive"
