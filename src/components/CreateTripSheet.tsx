@@ -21,16 +21,24 @@ export function CreateTripSheet({ trigger }: { trigger: ReactNode }) {
   const [start, setStart] = useState(today);
   const [end, setEnd] = useState(today);
 
+  const [saving, setSaving] = useState(false);
   const valid = name.trim().length > 0 && !!start && !!end && end >= start;
 
-  const submit = () => {
-    if (!valid) return;
-    addTrip({ name: name.trim(), startDate: start, endDate: end });
-    toast.success(t("tripCreated"));
-    setName("");
-    setStart(today);
-    setEnd(today);
-    setOpen(false);
+  const submit = async () => {
+    if (!valid || saving) return;
+    setSaving(true);
+    try {
+      await addTrip({ name: name.trim(), startDate: start, endDate: end });
+      toast.success(t("tripCreated"));
+      setName("");
+      setStart(today);
+      setEnd(today);
+      setOpen(false);
+    } catch {
+      toast.error(t("syncError"));
+    } finally {
+      setSaving(false);
+    }
   };
 
   return (
