@@ -133,7 +133,7 @@ export function AddExpenseFab() {
 
           {currency !== "GEL" && valid && (
             <p className="tabular -mt-2 text-xs font-semibold text-primary">
-              {t("converted")}: {formatGel(toGel(num, currency))}
+              {t("converted")}: {formatGel(toGel(num, currency, rates))}
             </p>
           )}
 
