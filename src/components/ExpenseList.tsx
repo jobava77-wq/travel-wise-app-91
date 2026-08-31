@@ -70,7 +70,9 @@ export function ExpenseList() {
                   )}
                 </div>
                 <button
-                  onClick={() => removeExpense(e.id)}
+                  onClick={() => {
+                    removeExpense(e.id).catch(() => toast.error(t("syncError")));
+                  }}
                   aria-label="Remove expense"
                   className="ml-1 flex size-7 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-secondary hover:text-destructive"
                 >

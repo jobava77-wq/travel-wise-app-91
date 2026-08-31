@@ -238,7 +238,7 @@ export function ExpensesProvider({ children }: { children: ReactNode }) {
         currency,
         amountGel: toGel(amount, currency, rates),
         category: asCategory(r.category),
-        note: r.title ?? undefined,
+        note: r.title ?? "",
         createdAt: new Date(r.created_at).getTime(),
       };
     });

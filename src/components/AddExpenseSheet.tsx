@@ -1,5 +1,6 @@
 import { useState } from "react";
-import { Plus } from "lucide-react";
+import { Loader2, Plus } from "lucide-react";
+import { toast } from "sonner";
 import {
   Drawer,
   DrawerContent,
@@ -25,13 +26,15 @@ import {
   toGel,
   useExpenses,
   type CategoryId,
-  type Currency,
 } from "@/lib/expenses";
+import { useRates, type Currency } from "@/lib/rates";
 
 export function AddExpenseFab() {
   const { t } = useI18n();
-  const { addExpense } = useExpenses();
+  const { addExpense, activeTrip, loading } = useExpenses();
+  const { rates } = useRates();
   const [open, setOpen] = useState(false);
+  const [saving, setSaving] = useState(false);
   const [amount, setAmount] = useState("");
   const [currency, setCurrency] = useState<Currency>("GEL");
   const [category, setCategory] = useState<CategoryId>("tickets");
@@ -47,11 +50,18 @@ export function AddExpenseFab() {
     setNote("");
   };
 
-  const submit = () => {
-    if (!valid) return;
-    addExpense({ amount: num, currency, category, note: note.trim() });
-    reset();
-    setOpen(false);
+  const submit = async () => {
+    if (!valid || saving) return;
+    setSaving(true);
+    try {
+      await addExpense({ amount: num, currency, category, note: note.trim() });
+      reset();
+      setOpen(false);
+    } catch {
+      toast.error(t("syncError"));
+    } finally {
+      setSaving(false);
+    }
   };
 
   return (
@@ -65,7 +75,8 @@ export function AddExpenseFab() {
       <DrawerTrigger asChild>
         <button
           aria-label={t("addExpense")}
-          className="fixed bottom-[76px] left-1/2 z-40 flex h-14 -translate-x-1/2 items-center gap-2 whitespace-nowrap rounded-full bg-primary px-6 text-sm font-bold text-primary-foreground shadow-[var(--shadow-fab)] transition-transform active:scale-95"
+          disabled={loading || !activeTrip}
+          className="fixed bottom-[76px] left-1/2 z-40 flex h-14 -translate-x-1/2 items-center gap-2 whitespace-nowrap rounded-full bg-primary px-6 text-sm font-bold text-primary-foreground shadow-[var(--shadow-fab)] transition-transform active:scale-95 disabled:opacity-50"
         >
           <Plus className="size-5" strokeWidth={2.6} />
           {t("addExpense")}
@@ -122,7 +133,7 @@ export function AddExpenseFab() {
 
           {currency !== "GEL" && valid && (
             <p className="tabular -mt-2 text-xs font-semibold text-primary">
-              {t("converted")}: {formatGel(toGel(num, currency))}
+              {t("converted")}: {formatGel(toGel(num, currency, rates))}
             </p>
           )}
 
@@ -179,9 +190,10 @@ export function AddExpenseFab() {
             </Button>
             <Button
               className="h-12 flex-1 rounded-2xl font-bold"
-              disabled={!valid}
-              onClick={submit}
+              disabled={!valid || saving}
+              onClick={() => void submit()}
             >
+              {saving && <Loader2 className="size-4 animate-spin" />}
               {t("save")}
             </Button>
           </div>

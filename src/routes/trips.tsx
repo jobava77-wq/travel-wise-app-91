@@ -4,6 +4,7 @@ import { toast } from "sonner";
 import { AppHeader } from "@/components/AppHeader";
 import { Button } from "@/components/ui/button";
 import { CreateTripSheet } from "@/components/CreateTripSheet";
+import { Skeleton } from "@/components/ui/skeleton";
 import { useI18n } from "@/lib/i18n";
 import { formatGel, formatTripPeriod, useExpenses } from "@/lib/expenses";
 import { cn } from "@/lib/utils";
@@ -29,7 +30,8 @@ export const Route = createFileRoute("/trips")({
 
 function Trips() {
   const { t, lang } = useI18n();
-  const { trips, activeTripId, setActiveTripId, removeTrip, tripTotal, tripCount } = useExpenses();
+  const { trips, activeTripId, setActiveTripId, removeTrip, tripTotal, tripCount, loading } =
+    useExpenses();
 
   return (
     <>
@@ -44,7 +46,17 @@ function Trips() {
           }
         />
 
-        {trips.length === 0 ? (
+        {loading ? (
+          <ul className="space-y-3">
+            {[0, 1].map((i) => (
+              <li key={i} className="ios-card space-y-2 p-4">
+                <Skeleton className="h-4 w-40 rounded-lg" />
+                <Skeleton className="h-3 w-28 rounded-full" />
+                <Skeleton className="h-4 w-24 rounded-lg" />
+              </li>
+            ))}
+          </ul>
+        ) : trips.length === 0 ? (
           <div className="ios-card flex flex-col items-center gap-2 px-6 py-12 text-center">
             <div className="flex size-12 items-center justify-center rounded-full bg-secondary">
               <Map className="size-6 text-muted-foreground" />
@@ -92,8 +104,9 @@ function Trips() {
                     </button>
                     <button
                       onClick={() => {
-                        removeTrip(trip.id);
-                        toast.success(t("tripDeleted"));
+                        removeTrip(trip.id)
+                          .then(() => toast.success(t("tripDeleted")))
+                          .catch(() => toast.error(t("syncError")));
                       }}
                       aria-label={t("deleteTrip")}
                       className="shrink-0 rounded-full p-2 text-muted-foreground transition-colors hover:text-destructive"

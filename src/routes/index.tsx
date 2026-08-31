@@ -1,5 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { AppHeader } from "@/components/AppHeader";
+import { TripHeaderCard } from "@/components/TripHeaderCard";
 import { TotalCard } from "@/components/TotalCard";
 import { Converters } from "@/components/Converters";
 import { ExpenseList } from "@/components/ExpenseList";
@@ -32,6 +33,7 @@ function Dashboard() {
     <>
       <AppHeader title={t("appName")} />
       <main className="mx-auto w-full max-w-md space-y-5 px-4 pb-40 pt-4">
+        <TripHeaderCard />
         <TotalCard />
         <Converters />
         <ExpenseList />
