@@ -33,6 +33,7 @@ function Dashboard() {
     <>
       <AppHeader title={t("appName")} />
       <main className="mx-auto w-full max-w-md space-y-5 px-4 pb-40 pt-4">
+        <TripHeaderCard />
         <TotalCard />
         <Converters />
         <ExpenseList />
