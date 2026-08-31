@@ -30,8 +30,10 @@ import {
 
 export function AddExpenseFab() {
   const { t } = useI18n();
-  const { addExpense } = useExpenses();
+  const { addExpense, activeTrip, loading } = useExpenses();
+  const { rates } = useRates();
   const [open, setOpen] = useState(false);
+  const [saving, setSaving] = useState(false);
   const [amount, setAmount] = useState("");
   const [currency, setCurrency] = useState<Currency>("GEL");
   const [category, setCategory] = useState<CategoryId>("tickets");
