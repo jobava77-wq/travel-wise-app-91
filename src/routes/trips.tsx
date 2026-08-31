@@ -4,6 +4,7 @@ import { toast } from "sonner";
 import { AppHeader } from "@/components/AppHeader";
 import { Button } from "@/components/ui/button";
 import { CreateTripSheet } from "@/components/CreateTripSheet";
+import { Skeleton } from "@/components/ui/skeleton";
 import { useI18n } from "@/lib/i18n";
 import { formatGel, formatTripPeriod, useExpenses } from "@/lib/expenses";
 import { cn } from "@/lib/utils";
