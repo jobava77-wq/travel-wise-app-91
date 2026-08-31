@@ -50,11 +50,18 @@ export function AddExpenseFab() {
     setNote("");
   };
 
-  const submit = () => {
-    if (!valid) return;
-    addExpense({ amount: num, currency, category, note: note.trim() });
-    reset();
-    setOpen(false);
+  const submit = async () => {
+    if (!valid || saving) return;
+    setSaving(true);
+    try {
+      await addExpense({ amount: num, currency, category, note: note.trim() });
+      reset();
+      setOpen(false);
+    } catch {
+      toast.error(t("syncError"));
+    } finally {
+      setSaving(false);
+    }
   };
 
   return (
