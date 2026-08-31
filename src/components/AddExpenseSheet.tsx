@@ -1,5 +1,6 @@
 import { useState } from "react";
-import { Plus } from "lucide-react";
+import { Loader2, Plus } from "lucide-react";
+import { toast } from "sonner";
 import {
   Drawer,
   DrawerContent,
@@ -25,8 +26,8 @@ import {
   toGel,
   useExpenses,
   type CategoryId,
-  type Currency,
 } from "@/lib/expenses";
+import { useRates, type Currency } from "@/lib/rates";
 
 export function AddExpenseFab() {
   const { t } = useI18n();
