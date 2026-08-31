@@ -6,6 +6,8 @@ import { Button } from "@/components/ui/button";
 import { RatesCard } from "@/components/RatesCard";
 import { useI18n } from "@/lib/i18n";
 import { useExpenses } from "@/lib/expenses";
+import { useState } from "react";
+import { supabase } from "@/integrations/supabase/client";
 
 export const Route = createFileRoute("/settings")({
   head: () => ({
@@ -26,6 +28,40 @@ export const Route = createFileRoute("/settings")({
   component: SettingsPage,
 });
 
+function GoogleAuthSection() {
+  const [loading, setLoading] = useState(false);
+
+  const handleGoogleLogin = async () => {
+    setLoading(true);
+    await supabase.auth.signInWithOAuth({
+      provider: "google",
+      options: {
+        redirectTo: window.location.origin,
+      },
+    });
+    setLoading(false);
+  };
+
+  return (
+    <div className="ios-card p-4 bg-white rounded-2xl border border-slate-100 shadow-sm flex items-center justify-between">
+      <div>
+        <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+          ავტორიზაცია
+        </h3>
+        <p className="text-sm font-bold text-slate-800 mt-0.5">Google-ით შესვლა</p>
+      </div>
+      <Button 
+        onClick={handleGoogleLogin}
+        disabled={loading}
+        variant="outline"
+        className="rounded-xl text-xs font-medium border-slate-200"
+      >
+        {loading ? 'იტვირთება...' : 'შესვლა'}
+      </Button>
+    </div>
+  );
+}
+
 function SettingsPage() {
   const { t } = useI18n();
   const { clearAll } = useExpenses();
@@ -38,6 +74,8 @@ function SettingsPage() {
           <span className="text-sm font-bold">{t("language")}</span>
           <LanguageToggle />
         </section>
+
+        <GoogleAuthSection />
 
         <RatesCard />
 
