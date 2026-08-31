@@ -1,5 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { AppHeader } from "@/components/AppHeader";
+import { TripHeaderCard } from "@/components/TripHeaderCard";
 import { TotalCard } from "@/components/TotalCard";
 import { Converters } from "@/components/Converters";
 import { ExpenseList } from "@/components/ExpenseList";

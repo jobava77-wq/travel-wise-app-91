@@ -1,4 +1,5 @@
 import { useState, type ReactNode } from "react";
+import { Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import {
   Drawer,
@@ -114,9 +115,10 @@ export function CreateTripSheet({ trigger }: { trigger: ReactNode }) {
             </Button>
             <Button
               className="h-12 flex-1 rounded-2xl font-bold"
-              disabled={!valid}
-              onClick={submit}
+              disabled={!valid || saving}
+              onClick={() => void submit()}
             >
+              {saving && <Loader2 className="size-4 animate-spin" />}
               {t("create")}
             </Button>
           </div>
