@@ -1,5 +1,6 @@
 import { useI18n } from "@/lib/i18n";
 import { cn } from "@/lib/utils";
+import { AuthDialog } from "@/components/AuthDialog";
 
 export function LanguageToggle() {
   const { lang, setLang } = useI18n();
@@ -33,7 +34,10 @@ export function AppHeader({ title }: { title: string }) {
     <header className="ios-blur sticky top-0 z-30 border-b border-border/60">
       <div className="mx-auto flex h-14 w-full max-w-md items-center justify-between px-5">
         <h1 className="text-[22px] font-extrabold tracking-tight">{title}</h1>
-        <LanguageToggle />
+        <div className="flex items-center gap-2">
+          <LanguageToggle />
+          <AuthDialog />
+        </div>
       </div>
     </header>
   );
