@@ -156,74 +156,86 @@ const slugify = (name: string) =>
 
 export function ExpensesProvider({ children }: { children: ReactNode }) {
   const { rates } = useRates();
+  const { pin } = useSession();
   const [rows, setRows] = useState<ExpenseRow[]>([]);
   const [tripRows, setTripRows] = useState<TripRow[]>([]);
   const [activeTripId, setActiveTripIdState] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
 
-  // initial fetch
+  // initial fetch — scoped strictly to the current trip PIN
   useEffect(() => {
+    if (!pin) {
+      setRows([]);
+      setTripRows([]);
+      setActiveTripIdState(null);
+      return;
+    }
     let alive = true;
+    setLoading(true);
     (async () => {
       const [tripsRes, expensesRes] = await Promise.all([
-        supabase.from("trips").select("*").order("created_at", { ascending: false }),
-        supabase.from("expenses").select("*").order("created_at", { ascending: false }),
+        supabase.from("trips").select("*").eq("id", pin),
+        supabase
+          .from("expenses")
+          .select("*")
+          .eq("trip_id", pin)
+          .order("created_at", { ascending: false }),
       ]);
       if (!alive) return;
-      const trips = (tripsRes.data ?? []) as TripRow[];
-      setTripRows(trips);
+      setTripRows((tripsRes.data ?? []) as TripRow[]);
       setRows((expensesRes.data ?? []) as ExpenseRow[]);
-
-      const saved = window.localStorage.getItem(ACTIVE_KEY);
-      const active =
-        trips.find((tr) => tr.id === saved)?.id ??
-        trips.find((tr) => tr.id === DEFAULT_TRIP_ID)?.id ??
-        trips[0]?.id ??
-        null;
-      setActiveTripIdState(active);
+      setActiveTripIdState(pin);
       setLoading(false);
     })();
     return () => {
       alive = false;
     };
-  }, []);
+  }, [pin]);
 
-  // realtime sync
+  // realtime sync, filtered by PIN
   useEffect(() => {
+    if (!pin) return;
     const channel = supabase
-      .channel("voyage-sync")
-      .on("postgres_changes", { event: "*", schema: "public", table: "expenses" }, (payload) => {
-        setRows((prev) => {
-          if (payload.eventType === "DELETE") {
-            const old = payload.old as { id?: string };
-            return prev.filter((r) => r.id !== old.id);
-          }
-          const row = payload.new as ExpenseRow;
-          const rest = prev.filter((r) => r.id !== row.id);
-          return [row, ...rest].sort((a, b) => b.created_at.localeCompare(a.created_at));
-        });
-      })
-      .on("postgres_changes", { event: "*", schema: "public", table: "trips" }, (payload) => {
-        setTripRows((prev) => {
-          if (payload.eventType === "DELETE") {
-            const old = payload.old as { id?: string };
-            return prev.filter((r) => r.id !== old.id);
-          }
-          const row = payload.new as TripRow;
-          const rest = prev.filter((r) => r.id !== row.id);
-          return [row, ...rest].sort((a, b) => b.created_at.localeCompare(a.created_at));
-        });
-      })
+      .channel(`voyage-sync-${pin}`)
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "expenses", filter: `trip_id=eq.${pin}` },
+        (payload) => {
+          setRows((prev) => {
+            if (payload.eventType === "DELETE") {
+              const old = payload.old as { id?: string };
+              return prev.filter((r) => r.id !== old.id);
+            }
+            const row = payload.new as ExpenseRow;
+            if (row.trip_id !== pin) return prev;
+            const rest = prev.filter((r) => r.id !== row.id);
+            return [row, ...rest].sort((a, b) => b.created_at.localeCompare(a.created_at));
+          });
+        },
+      )
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "trips", filter: `id=eq.${pin}` },
+        (payload) => {
+          setTripRows((prev) => {
+            if (payload.eventType === "DELETE") {
+              const old = payload.old as { id?: string };
+              return prev.filter((r) => r.id !== old.id);
+            }
+            const row = payload.new as TripRow;
+            return [row, ...prev.filter((r) => r.id !== row.id)];
+          });
+        },
+      )
       .subscribe();
 
     return () => {
       void supabase.removeChannel(channel);
     };
-  }, []);
+  }, [pin]);
 
   const setActiveTripId = (id: string) => {
     setActiveTripIdState(id);
-    window.localStorage.setItem(ACTIVE_KEY, id);
   };
 
   const value = useMemo<Ctx>(() => {
