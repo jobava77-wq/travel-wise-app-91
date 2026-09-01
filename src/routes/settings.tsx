@@ -94,6 +94,13 @@ function SettingsPage() {
           <Trash2 className="size-4" />
           {t("clearData")}
         </Button>
+
+        <section className="ios-card p-5">
+          <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+            {t("about")}
+          </h3>
+          <p className="mt-2 text-sm text-muted-foreground">{t("aboutText")}</p>
+        </section>
       </main>
     </>
   );
