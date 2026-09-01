@@ -273,31 +273,28 @@ export function ExpensesProvider({ children }: { children: ReactNode }) {
       activeTripId,
       setActiveTripId,
       addTrip: async (t) => {
-        const id = `${slugify(t.name)}-${Math.random().toString(36).slice(2, 6)}`;
+        if (!pin) return;
         const { data, error } = await supabase
           .from("trips")
-          .insert({ id, name: t.name, start_date: t.startDate, end_date: t.endDate })
+          .upsert({ id: pin, name: t.name, start_date: t.startDate, end_date: t.endDate })
           .select("*")
           .single();
         if (error) throw error;
         const row = data as TripRow;
-        setTripRows((prev) => [row, ...prev.filter((r) => r.id !== row.id)]);
-        setActiveTripId(row.id);
+        setTripRows([row]);
+        setActiveTripIdState(pin);
       },
       removeTrip: async (id) => {
-        const { error } = await supabase.from("trips").delete().eq("id", id);
+        if (!pin || id !== pin) return;
+        const { error: expensesError } = await supabase
+          .from("expenses")
+          .delete()
+          .eq("trip_id", pin);
+        if (expensesError) throw expensesError;
+        const { error } = await supabase.from("trips").delete().eq("id", pin);
         if (error) throw error;
-        setTripRows((prev) => {
-          const next = prev.filter((tr) => tr.id !== id);
-          if (activeTripId === id) {
-            const fallback = next[0]?.id ?? null;
-            setActiveTripIdState(fallback);
-            if (fallback) window.localStorage.setItem(ACTIVE_KEY, fallback);
-            else window.localStorage.removeItem(ACTIVE_KEY);
-          }
-          return next;
-        });
-        setRows((prev) => prev.filter((r) => r.trip_id !== id));
+        setTripRows([]);
+        setRows([]);
       },
       expenses: tripExpenses,
       allExpenses: expensesAll,
@@ -306,11 +303,11 @@ export function ExpensesProvider({ children }: { children: ReactNode }) {
       tripTotal: (tripId) => sum(expensesAll.filter((e) => e.tripId === tripId)),
       tripCount: (tripId) => expensesAll.filter((e) => e.tripId === tripId).length,
       addExpense: async (e) => {
-        const tripId = activeTripId ?? DEFAULT_TRIP_ID;
+        if (!pin) return;
         const { data, error } = await supabase
           .from("expenses")
           .insert({
-            trip_id: tripId,
+            trip_id: pin,
             title: e.note ?? "",
             amount: e.amount,
             currency: e.currency,
@@ -323,19 +320,23 @@ export function ExpensesProvider({ children }: { children: ReactNode }) {
         setRows((prev) => [row, ...prev.filter((r) => r.id !== row.id)]);
       },
       removeExpense: async (id) => {
+        if (!pin) return;
         setRows((prev) => prev.filter((r) => r.id !== id));
-        const { error } = await supabase.from("expenses").delete().eq("id", id);
+        const { error } = await supabase
+          .from("expenses")
+          .delete()
+          .eq("id", id)
+          .eq("trip_id", pin);
         if (error) throw error;
       },
       clearAll: async () => {
-        const tripId = activeTripId;
-        if (!tripId) return;
-        setRows((prev) => prev.filter((r) => r.trip_id !== tripId));
-        const { error } = await supabase.from("expenses").delete().eq("trip_id", tripId);
+        if (!pin) return;
+        setRows([]);
+        const { error } = await supabase.from("expenses").delete().eq("trip_id", pin);
         if (error) throw error;
       },
     };
-  }, [rows, tripRows, activeTripId, loading, rates]);
+  }, [rows, tripRows, activeTripId, loading, rates, pin]);
 
   return <ExpensesContext.Provider value={value}>{children}</ExpensesContext.Provider>;
 }
