@@ -73,6 +73,20 @@ const dict = {
   tripAccess: { en: "Trip access", ka: "მოგზაურობის წვდომა" },
   exitTrip: { en: "Exit trip", ka: "მოგზაურობიდან გასვლა" },
 
+  dashboard: { en: "My Trips", ka: "ჩემი მოგზაურობები" },
+  backToTrips: { en: "Trips", ka: "მოგზაურობები" },
+  logOut: { en: "Log out", ka: "გასვლა" },
+  loggedOut: { en: "Logged out", ka: "გამოსვლა შესრულდა" },
+  personalPin: { en: "Personal PIN", ka: "პირადი კოდი" },
+  personalPinHint: {
+    en: "5 digits. Your trips are tied to this PIN on every device.",
+    ka: "5 ციფრი. თქვენი მოგზაურობები ამ კოდზეა მიბმული ყველა მოწყობილობაზე.",
+  },
+  continueBtn: { en: "Continue", ka: "გაგრძელება" },
+  helloUser: { en: "Hello", ka: "გამარჯობა" },
+  openTrip: { en: "Open trip", ka: "გახსნა" },
+  tripMissing: { en: "Trip not found", ka: "მოგზაურობა ვერ მოიძებნა" },
+
   cat_tickets: { en: "Tickets", ka: "ბილეთები" },
   cat_luggage: { en: "Luggage", ka: "ბარგი" },
   cat_hotel: { en: "Hotel", ka: "სასტუმრო" },
