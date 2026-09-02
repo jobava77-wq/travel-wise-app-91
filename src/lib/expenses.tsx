@@ -10,14 +10,12 @@ import {
   type LucideIcon,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
+import { useSession } from "@/lib/session";
 import type { TKey, Lang } from "./i18n";
 import { CURRENCY_SYMBOL, DEFAULT_RATES, useRates, type Currency, type Rates } from "./rates";
 
 export { CURRENCY_SYMBOL, DEFAULT_RATES, useRates };
 export type { Currency, Rates };
-
-/** Shared family trip used when no other trip is selected */
-export const DEFAULT_TRIP_ID = "cyprus-2026";
 
 export type CategoryId =
   | "tickets"
@@ -105,6 +103,8 @@ type TripRow = {
   start_date: string;
   end_date: string;
   created_at: string;
+  owner_pin?: string;
+  owner_name?: string;
 };
 
 const mapTrip = (r: TripRow): Trip => ({
@@ -115,8 +115,7 @@ const mapTrip = (r: TripRow): Trip => ({
   createdAt: new Date(r.created_at).getTime(),
 });
 
-const asCurrency = (v: string): Currency =>
-  v === "USD" || v === "EUR" || v === "GEL" ? v : "GEL";
+const asCurrency = (v: string): Currency => (v === "USD" || v === "EUR" || v === "GEL" ? v : "GEL");
 
 const asCategory = (v: string): CategoryId =>
   (CATEGORIES.find((c) => c.id === v)?.id ?? "tickets") as CategoryId;
@@ -126,8 +125,8 @@ type Ctx = {
   trips: Trip[];
   activeTrip: Trip | null;
   activeTripId: string | null;
-  setActiveTripId: (id: string) => void;
-  addTrip: (t: Omit<Trip, "id" | "createdAt">) => Promise<void>;
+  setActiveTripId: (id: string | null) => void;
+  addTrip: (t: Omit<Trip, "id" | "createdAt">) => Promise<string>;
   removeTrip: (id: string) => Promise<void>;
   /** expenses of the active trip only */
   expenses: Expense[];
@@ -145,8 +144,6 @@ type Ctx = {
 
 const ExpensesContext = createContext<Ctx | null>(null);
 
-const ACTIVE_KEY = "activeTripId";
-
 const slugify = (name: string) =>
   name
     .toLowerCase()
@@ -156,35 +153,34 @@ const slugify = (name: string) =>
 
 export function ExpensesProvider({ children }: { children: ReactNode }) {
   const { rates } = useRates();
-  const { pin } = useSession();
+  const { pin, username } = useSession();
   const [rows, setRows] = useState<ExpenseRow[]>([]);
   const [tripRows, setTripRows] = useState<TripRow[]>([]);
   const [activeTripId, setActiveTripIdState] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
 
-  // initial fetch — scoped strictly to the current trip PIN
+  const tripIds = useMemo(() => tripRows.map((t) => t.id), [tripRows]);
+  const tripIdsKey = tripIds.join(",");
+
+  // fetch the trips owned by the current user
   useEffect(() => {
     if (!pin) {
       setRows([]);
       setTripRows([]);
       setActiveTripIdState(null);
+      setLoading(false);
       return;
     }
     let alive = true;
     setLoading(true);
     (async () => {
-      const [tripsRes, expensesRes] = await Promise.all([
-        supabase.from("trips").select("*").eq("id", pin),
-        supabase
-          .from("expenses")
-          .select("*")
-          .eq("trip_id", pin)
-          .order("created_at", { ascending: false }),
-      ]);
+      const { data } = await supabase
+        .from("trips")
+        .select("*")
+        .eq("owner_pin", pin)
+        .order("created_at", { ascending: false });
       if (!alive) return;
-      setTripRows((tripsRes.data ?? []) as TripRow[]);
-      setRows((expensesRes.data ?? []) as ExpenseRow[]);
-      setActiveTripIdState(pin);
+      setTripRows((data ?? []) as TripRow[]);
       setLoading(false);
     })();
     return () => {
@@ -192,30 +188,48 @@ export function ExpensesProvider({ children }: { children: ReactNode }) {
     };
   }, [pin]);
 
-  // realtime sync, filtered by PIN
+  // fetch the expenses of those trips
+  useEffect(() => {
+    if (!pin || tripIds.length === 0) {
+      setRows([]);
+      return;
+    }
+    let alive = true;
+    (async () => {
+      const { data } = await supabase
+        .from("expenses")
+        .select("*")
+        .in("trip_id", tripIds)
+        .order("created_at", { ascending: false });
+      if (!alive) return;
+      setRows((data ?? []) as ExpenseRow[]);
+    })();
+    return () => {
+      alive = false;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pin, tripIdsKey]);
+
+  // realtime sync, scoped to the user's trips
   useEffect(() => {
     if (!pin) return;
     const channel = supabase
       .channel(`voyage-sync-${pin}`)
+      .on("postgres_changes", { event: "*", schema: "public", table: "expenses" }, (payload) => {
+        setRows((prev) => {
+          if (payload.eventType === "DELETE") {
+            const old = payload.old as { id?: string };
+            return prev.filter((r) => r.id !== old.id);
+          }
+          const row = payload.new as ExpenseRow;
+          if (!tripIds.includes(row.trip_id)) return prev;
+          const rest = prev.filter((r) => r.id !== row.id);
+          return [row, ...rest].sort((a, b) => b.created_at.localeCompare(a.created_at));
+        });
+      })
       .on(
         "postgres_changes",
-        { event: "*", schema: "public", table: "expenses", filter: `trip_id=eq.${pin}` },
-        (payload) => {
-          setRows((prev) => {
-            if (payload.eventType === "DELETE") {
-              const old = payload.old as { id?: string };
-              return prev.filter((r) => r.id !== old.id);
-            }
-            const row = payload.new as ExpenseRow;
-            if (row.trip_id !== pin) return prev;
-            const rest = prev.filter((r) => r.id !== row.id);
-            return [row, ...rest].sort((a, b) => b.created_at.localeCompare(a.created_at));
-          });
-        },
-      )
-      .on(
-        "postgres_changes",
-        { event: "*", schema: "public", table: "trips", filter: `id=eq.${pin}` },
+        { event: "*", schema: "public", table: "trips", filter: `owner_pin=eq.${pin}` },
         (payload) => {
           setTripRows((prev) => {
             if (payload.eventType === "DELETE") {
@@ -223,7 +237,8 @@ export function ExpensesProvider({ children }: { children: ReactNode }) {
               return prev.filter((r) => r.id !== old.id);
             }
             const row = payload.new as TripRow;
-            return [row, ...prev.filter((r) => r.id !== row.id)];
+            const rest = prev.filter((r) => r.id !== row.id);
+            return [row, ...rest].sort((a, b) => b.created_at.localeCompare(a.created_at));
           });
         },
       )
@@ -232,11 +247,8 @@ export function ExpensesProvider({ children }: { children: ReactNode }) {
     return () => {
       void supabase.removeChannel(channel);
     };
-  }, [pin]);
-
-  const setActiveTripId = (id: string) => {
-    setActiveTripIdState(id);
-  };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pin, tripIdsKey]);
 
   const value = useMemo<Ctx>(() => {
     const trips = tripRows.map(mapTrip);
@@ -271,30 +283,43 @@ export function ExpensesProvider({ children }: { children: ReactNode }) {
       trips,
       activeTrip,
       activeTripId,
-      setActiveTripId,
+      setActiveTripId: setActiveTripIdState,
       addTrip: async (t) => {
-        if (!pin) return;
+        if (!pin) throw new Error("No session");
+        const id = `${slugify(t.name)}-${Math.random().toString(36).slice(2, 6)}`;
         const { data, error } = await supabase
           .from("trips")
-          .upsert({ id: pin, name: t.name, start_date: t.startDate, end_date: t.endDate })
+          .insert({
+            id,
+            name: t.name,
+            start_date: t.startDate,
+            end_date: t.endDate,
+            owner_pin: pin,
+            owner_name: username ?? "",
+          })
           .select("*")
           .single();
         if (error) throw error;
         const row = data as TripRow;
-        setTripRows([row]);
-        setActiveTripIdState(pin);
+        setTripRows((prev) => [row, ...prev.filter((r) => r.id !== row.id)]);
+        return row.id;
       },
       removeTrip: async (id) => {
-        if (!pin || id !== pin) return;
+        if (!pin) return;
         const { error: expensesError } = await supabase
           .from("expenses")
           .delete()
-          .eq("trip_id", pin);
+          .eq("trip_id", id);
         if (expensesError) throw expensesError;
-        const { error } = await supabase.from("trips").delete().eq("id", pin);
+        const { error } = await supabase
+          .from("trips")
+          .delete()
+          .eq("id", id)
+          .eq("owner_pin", pin);
         if (error) throw error;
-        setTripRows([]);
-        setRows([]);
+        setTripRows((prev) => prev.filter((r) => r.id !== id));
+        setRows((prev) => prev.filter((r) => r.trip_id !== id));
+        if (activeTripId === id) setActiveTripIdState(null);
       },
       expenses: tripExpenses,
       allExpenses: expensesAll,
@@ -303,11 +328,11 @@ export function ExpensesProvider({ children }: { children: ReactNode }) {
       tripTotal: (tripId) => sum(expensesAll.filter((e) => e.tripId === tripId)),
       tripCount: (tripId) => expensesAll.filter((e) => e.tripId === tripId).length,
       addExpense: async (e) => {
-        if (!pin) return;
+        if (!activeTripId) return;
         const { data, error } = await supabase
           .from("expenses")
           .insert({
-            trip_id: pin,
+            trip_id: activeTripId,
             title: e.note ?? "",
             amount: e.amount,
             currency: e.currency,
@@ -320,23 +345,18 @@ export function ExpensesProvider({ children }: { children: ReactNode }) {
         setRows((prev) => [row, ...prev.filter((r) => r.id !== row.id)]);
       },
       removeExpense: async (id) => {
-        if (!pin) return;
         setRows((prev) => prev.filter((r) => r.id !== id));
-        const { error } = await supabase
-          .from("expenses")
-          .delete()
-          .eq("id", id)
-          .eq("trip_id", pin);
+        const { error } = await supabase.from("expenses").delete().eq("id", id);
         if (error) throw error;
       },
       clearAll: async () => {
-        if (!pin) return;
-        setRows([]);
-        const { error } = await supabase.from("expenses").delete().eq("trip_id", pin);
+        if (!activeTripId) return;
+        setRows((prev) => prev.filter((r) => r.trip_id !== activeTripId));
+        const { error } = await supabase.from("expenses").delete().eq("trip_id", activeTripId);
         if (error) throw error;
       },
     };
-  }, [rows, tripRows, activeTripId, loading, rates, pin]);
+  }, [rows, tripRows, activeTripId, loading, rates, pin, username]);
 
   return <ExpensesContext.Provider value={value}>{children}</ExpensesContext.Provider>;
 }
