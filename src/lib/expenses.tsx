@@ -105,6 +105,7 @@ type TripRow = {
   start_date: string;
   end_date: string;
   created_at: string;
+  budget_gel?: number | string | null;
   owner_pin?: string;
   owner_name?: string;
 };
@@ -114,6 +115,7 @@ const mapTrip = (r: TripRow): Trip => ({
   name: r.name,
   startDate: r.start_date,
   endDate: r.end_date,
+  budgetGel: r.budget_gel == null ? null : Number(r.budget_gel) || null,
   createdAt: new Date(r.created_at).getTime(),
 });
 
