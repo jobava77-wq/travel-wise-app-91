@@ -303,6 +303,7 @@ export function ExpensesProvider({ children }: { children: ReactNode }) {
             name: t.name,
             start_date: t.startDate,
             end_date: t.endDate,
+            budget_gel: t.budgetGel ?? null,
             owner_pin: pin,
             owner_name: username ?? "",
           })
