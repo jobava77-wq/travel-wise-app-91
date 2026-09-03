@@ -314,6 +314,24 @@ export function ExpensesProvider({ children }: { children: ReactNode }) {
         setTripRows((prev) => [row, ...prev.filter((r) => r.id !== row.id)]);
         return row.id;
       },
+      updateTrip: async (id, patch) => {
+        if (!pin) return;
+        const payload: Record<string, unknown> = {};
+        if (patch.name !== undefined) payload["name"] = patch.name;
+        if (patch.startDate !== undefined) payload["start_date"] = patch.startDate;
+        if (patch.endDate !== undefined) payload["end_date"] = patch.endDate;
+        if (patch.budgetGel !== undefined) payload["budget_gel"] = patch.budgetGel;
+        const { data, error } = await supabase
+          .from("trips")
+          .update(payload)
+          .eq("id", id)
+          .eq("owner_pin", pin)
+          .select("*")
+          .single();
+        if (error) throw error;
+        const row = data as TripRow;
+        setTripRows((prev) => prev.map((r) => (r.id === row.id ? row : r)));
+      },
       removeTrip: async (id) => {
         if (!pin) return;
         const { error: expensesError } = await supabase
