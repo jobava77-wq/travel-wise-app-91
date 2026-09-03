@@ -14,6 +14,8 @@ import { reportLovableError } from "../lib/lovable-error-reporting";
 import { I18nProvider } from "@/lib/i18n";
 import { ExpensesProvider } from "@/lib/expenses";
 import { RatesProvider } from "@/lib/rates";
+import { SessionProvider, useSession } from "@/lib/session";
+import { PinGate } from "@/components/PinGate";
 import { BottomNav } from "@/components/BottomNav";
 import { Toaster } from "@/components/ui/sonner";
 
@@ -139,6 +141,23 @@ function RootShell({ children }: { children: ReactNode }) {
   );
 }
 
+function AppShell() {
+  const { ready, pin } = useSession();
+
+  if (!ready) return <div className="min-h-screen bg-background" />;
+  if (!pin) return <PinGate />;
+
+  return (
+    <ExpensesProvider>
+      <div className="min-h-screen bg-background">
+        {/* Required: nested routes render here. Removing <Outlet /> breaks all child routes. */}
+        <Outlet />
+      </div>
+      <BottomNav />
+    </ExpensesProvider>
+  );
+}
+
 function RootComponent() {
   const { queryClient } = Route.useRouteContext();
 
@@ -146,17 +165,12 @@ function RootComponent() {
     <QueryClientProvider client={queryClient}>
       <I18nProvider>
         <RatesProvider>
-          <ExpensesProvider>
-            <div className="min-h-screen bg-background">
-              {/* Required: nested routes render here. Removing <Outlet /> breaks all child routes. */}
-              <Outlet />
-            </div>
-            <BottomNav />
+          <SessionProvider>
+            <AppShell />
             <Toaster position="top-center" />
-          </ExpensesProvider>
+          </SessionProvider>
         </RatesProvider>
       </I18nProvider>
     </QueryClientProvider>
   );
 }
-

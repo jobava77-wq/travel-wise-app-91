@@ -1,4 +1,5 @@
 import { useState, type ReactNode } from "react";
+import { useNavigate } from "@tanstack/react-router";
 import { Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import {
@@ -16,6 +17,7 @@ import { useExpenses } from "@/lib/expenses";
 export function CreateTripSheet({ trigger }: { trigger: ReactNode }) {
   const { t } = useI18n();
   const { addTrip } = useExpenses();
+  const navigate = useNavigate();
   const [open, setOpen] = useState(false);
   const today = new Date().toISOString().slice(0, 10);
   const [name, setName] = useState("");
@@ -29,12 +31,13 @@ export function CreateTripSheet({ trigger }: { trigger: ReactNode }) {
     if (!valid || saving) return;
     setSaving(true);
     try {
-      await addTrip({ name: name.trim(), startDate: start, endDate: end });
+      const id = await addTrip({ name: name.trim(), startDate: start, endDate: end });
       toast.success(t("tripCreated"));
       setName("");
       setStart(today);
       setEnd(today);
       setOpen(false);
+      void navigate({ to: "/trip/$tripId", params: { tripId: id } });
     } catch {
       toast.error(t("syncError"));
     } finally {

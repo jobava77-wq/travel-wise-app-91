@@ -1,6 +1,4 @@
-import { CalendarDays, MapPin, Plus } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { CreateTripSheet } from "@/components/CreateTripSheet";
+import { CalendarDays, MapPin } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useI18n } from "@/lib/i18n";
 import { formatTripPeriod, useExpenses } from "@/lib/expenses";
@@ -9,7 +7,7 @@ export function TripHeaderCard() {
   const { t, lang } = useI18n();
   const { activeTrip, loading } = useExpenses();
 
-  if (loading) {
+  if (loading || !activeTrip) {
     return (
       <section className="ios-card flex items-center gap-3 p-5">
         <Skeleton className="size-11 shrink-0 rounded-2xl" />
@@ -17,26 +15,6 @@ export function TripHeaderCard() {
           <Skeleton className="h-5 w-40 rounded-lg" />
           <Skeleton className="h-3 w-28 rounded-full" />
         </div>
-      </section>
-    );
-  }
-
-  if (!activeTrip) {
-    return (
-      <section className="ios-card flex flex-col items-center gap-2 px-6 py-8 text-center">
-        <div className="flex size-12 items-center justify-center rounded-full bg-secondary">
-          <MapPin className="size-6 text-muted-foreground" />
-        </div>
-        <p className="text-sm font-bold">{t("noActiveTrip")}</p>
-        <p className="text-xs text-muted-foreground">{t("noActiveTripHint")}</p>
-        <CreateTripSheet
-          trigger={
-            <Button className="mt-2 h-11 rounded-2xl font-bold">
-              <Plus className="size-4" />
-              {t("newTrip")}
-            </Button>
-          }
-        />
       </section>
     );
   }
@@ -55,6 +33,7 @@ export function TripHeaderCard() {
           </p>
         </div>
       </div>
+      <span className="sr-only">{t("activeTrip")}</span>
     </section>
   );
 }
