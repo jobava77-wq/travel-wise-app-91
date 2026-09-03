@@ -143,6 +143,10 @@ type Ctx = {
   addExpense: (
     e: Pick<Expense, "amount" | "currency" | "category"> & { note?: string },
   ) => Promise<void>;
+  updateExpense: (
+    id: string,
+    patch: Pick<Expense, "amount" | "currency" | "category"> & { note?: string },
+  ) => Promise<void>;
   removeExpense: (id: string) => Promise<void>;
   clearAll: () => Promise<void>;
 };
