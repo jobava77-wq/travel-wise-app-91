@@ -61,6 +61,8 @@ export type Trip = {
   /** ISO date strings: YYYY-MM-DD */
   startDate: string;
   endDate: string;
+  /** optional planned spend in GEL */
+  budgetGel: number | null;
   createdAt: number;
 };
 
