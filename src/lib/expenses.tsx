@@ -372,6 +372,22 @@ export function ExpensesProvider({ children }: { children: ReactNode }) {
         const row = data as ExpenseRow;
         setRows((prev) => [row, ...prev.filter((r) => r.id !== row.id)]);
       },
+      updateExpense: async (id, patch) => {
+        const { data, error } = await supabase
+          .from("expenses")
+          .update({
+            title: patch.note ?? "",
+            amount: patch.amount,
+            currency: patch.currency,
+            category: patch.category,
+          })
+          .eq("id", id)
+          .select("*")
+          .single();
+        if (error) throw error;
+        const row = data as ExpenseRow;
+        setRows((prev) => prev.map((r) => (r.id === row.id ? row : r)));
+      },
       removeExpense: async (id) => {
         setRows((prev) => prev.filter((r) => r.id !== id));
         const { error } = await supabase.from("expenses").delete().eq("id", id);
