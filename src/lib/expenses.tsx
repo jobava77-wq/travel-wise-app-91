@@ -131,6 +131,7 @@ type Ctx = {
   activeTripId: string | null;
   setActiveTripId: (id: string | null) => void;
   addTrip: (t: Omit<Trip, "id" | "createdAt">) => Promise<string>;
+  updateTrip: (id: string, patch: Partial<Omit<Trip, "id" | "createdAt">>) => Promise<void>;
   removeTrip: (id: string) => Promise<void>;
   /** expenses of the active trip only */
   expenses: Expense[];
