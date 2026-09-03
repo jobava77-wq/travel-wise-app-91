@@ -61,6 +61,8 @@ export type Trip = {
   /** ISO date strings: YYYY-MM-DD */
   startDate: string;
   endDate: string;
+  /** optional planned spend in GEL */
+  budgetGel: number | null;
   createdAt: number;
 };
 
@@ -103,6 +105,7 @@ type TripRow = {
   start_date: string;
   end_date: string;
   created_at: string;
+  budget_gel?: number | string | null;
   owner_pin?: string;
   owner_name?: string;
 };
@@ -112,6 +115,7 @@ const mapTrip = (r: TripRow): Trip => ({
   name: r.name,
   startDate: r.start_date,
   endDate: r.end_date,
+  budgetGel: r.budget_gel == null ? null : Number(r.budget_gel) || null,
   createdAt: new Date(r.created_at).getTime(),
 });
 
@@ -127,6 +131,7 @@ type Ctx = {
   activeTripId: string | null;
   setActiveTripId: (id: string | null) => void;
   addTrip: (t: Omit<Trip, "id" | "createdAt">) => Promise<string>;
+  updateTrip: (id: string, patch: Partial<Omit<Trip, "id" | "createdAt">>) => Promise<void>;
   removeTrip: (id: string) => Promise<void>;
   /** expenses of the active trip only */
   expenses: Expense[];
@@ -137,6 +142,10 @@ type Ctx = {
   tripCount: (tripId: string) => number;
   addExpense: (
     e: Pick<Expense, "amount" | "currency" | "category"> & { note?: string },
+  ) => Promise<void>;
+  updateExpense: (
+    id: string,
+    patch: Pick<Expense, "amount" | "currency" | "category"> & { note?: string },
   ) => Promise<void>;
   removeExpense: (id: string) => Promise<void>;
   clearAll: () => Promise<void>;
@@ -294,6 +303,7 @@ export function ExpensesProvider({ children }: { children: ReactNode }) {
             name: t.name,
             start_date: t.startDate,
             end_date: t.endDate,
+            budget_gel: t.budgetGel ?? null,
             owner_pin: pin,
             owner_name: username ?? "",
           })
@@ -303,6 +313,24 @@ export function ExpensesProvider({ children }: { children: ReactNode }) {
         const row = data as TripRow;
         setTripRows((prev) => [row, ...prev.filter((r) => r.id !== row.id)]);
         return row.id;
+      },
+      updateTrip: async (id, patch) => {
+        if (!pin) return;
+        const payload: Record<string, unknown> = {};
+        if (patch.name !== undefined) payload["name"] = patch.name;
+        if (patch.startDate !== undefined) payload["start_date"] = patch.startDate;
+        if (patch.endDate !== undefined) payload["end_date"] = patch.endDate;
+        if (patch.budgetGel !== undefined) payload["budget_gel"] = patch.budgetGel;
+        const { data, error } = await supabase
+          .from("trips")
+          .update(payload)
+          .eq("id", id)
+          .eq("owner_pin", pin)
+          .select("*")
+          .single();
+        if (error) throw error;
+        const row = data as TripRow;
+        setTripRows((prev) => prev.map((r) => (r.id === row.id ? row : r)));
       },
       removeTrip: async (id) => {
         if (!pin) return;
@@ -343,6 +371,22 @@ export function ExpensesProvider({ children }: { children: ReactNode }) {
         if (error) throw error;
         const row = data as ExpenseRow;
         setRows((prev) => [row, ...prev.filter((r) => r.id !== row.id)]);
+      },
+      updateExpense: async (id, patch) => {
+        const { data, error } = await supabase
+          .from("expenses")
+          .update({
+            title: patch.note ?? "",
+            amount: patch.amount,
+            currency: patch.currency,
+            category: patch.category,
+          })
+          .eq("id", id)
+          .select("*")
+          .single();
+        if (error) throw error;
+        const row = data as ExpenseRow;
+        setRows((prev) => prev.map((r) => (r.id === row.id ? row : r)));
       },
       removeExpense: async (id) => {
         setRows((prev) => prev.filter((r) => r.id !== id));
