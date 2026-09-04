@@ -1,9 +1,12 @@
 import { useEffect, useState } from "react";
-import { RotateCcw } from "lucide-react";
+import { useServerFn } from "@tanstack/react-start";
+import { Loader2, RotateCcw, RefreshCw } from "lucide-react";
+import { toast } from "sonner";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { useI18n } from "@/lib/i18n";
 import { DEFAULT_RATES, useRates } from "@/lib/rates";
+import { fetchNbgRates } from "@/lib/rates.functions";
 
 function RateInput({ currency }: { currency: "EUR" | "USD" }) {
   const { rates, setRate } = useRates();
@@ -40,8 +43,25 @@ function RateInput({ currency }: { currency: "EUR" | "USD" }) {
 
 export function RatesCard() {
   const { t } = useI18n();
-  const { rates, resetRates } = useRates();
+  const { rates, setRate, resetRates } = useRates();
+  const fetchLive = useServerFn(fetchNbgRates);
+  const [fetching, setFetching] = useState(false);
   const custom = rates.EUR !== DEFAULT_RATES.EUR || rates.USD !== DEFAULT_RATES.USD;
+
+  const useLiveRates = async () => {
+    if (fetching) return;
+    setFetching(true);
+    try {
+      const live = await fetchLive();
+      setRate("USD", live.USD);
+      setRate("EUR", live.EUR);
+      toast.success(t("ratesFetched"));
+    } catch {
+      toast.error(t("ratesFetchFailed"));
+    } finally {
+      setFetching(false);
+    }
+  };
 
   return (
     <section className="ios-card p-5">
@@ -53,16 +73,31 @@ export function RatesCard() {
         <RateInput currency="EUR" />
         <RateInput currency="USD" />
       </div>
-      {custom && (
+      <div className="mt-4 flex gap-2">
         <Button
           variant="secondary"
-          className="mt-4 h-10 w-full rounded-2xl text-xs font-bold"
-          onClick={resetRates}
+          className="h-10 flex-1 rounded-2xl text-xs font-bold"
+          disabled={fetching}
+          onClick={() => void useLiveRates()}
         >
-          <RotateCcw className="size-3.5" />
-          {t("resetRates")}
+          {fetching ? (
+            <Loader2 className="size-3.5 animate-spin" />
+          ) : (
+            <RefreshCw className="size-3.5" />
+          )}
+          {t("fetchLiveRates")}
         </Button>
-      )}
+        {custom && (
+          <Button
+            variant="secondary"
+            className="h-10 rounded-2xl px-3 text-xs font-bold"
+            onClick={resetRates}
+            aria-label={t("resetRates")}
+          >
+            <RotateCcw className="size-3.5" />
+          </Button>
+        )}
+      </div>
     </section>
   );
 }

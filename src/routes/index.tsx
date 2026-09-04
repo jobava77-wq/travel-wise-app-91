@@ -1,13 +1,30 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { ChevronRight, LogOut, Map, Plus, Trash2 } from "lucide-react";
+import { ChevronRight, LogOut, Map, MoreHorizontal, Pencil, Plus, Trash2 } from "lucide-react";
+import { useState } from "react";
 import { toast } from "sonner";
 import { AppHeader } from "@/components/AppHeader";
 import { Button } from "@/components/ui/button";
-import { CreateTripSheet } from "@/components/CreateTripSheet";
+import { TripSheet } from "@/components/TripSheet";
 import { Skeleton } from "@/components/ui/skeleton";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { useI18n } from "@/lib/i18n";
 import { useSession } from "@/lib/session";
-import { formatGel, formatTripPeriod, useExpenses } from "@/lib/expenses";
+import { formatGel, formatTripPeriod, useExpenses, type Trip } from "@/lib/expenses";
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -32,6 +49,8 @@ function Dashboard() {
   const { t, lang } = useI18n();
   const { username, signOut } = useSession();
   const { trips, loading, tripTotal, tripCount, removeTrip } = useExpenses();
+  const [editingTrip, setEditingTrip] = useState<Trip | null>(null);
+  const [deletingTrip, setDeletingTrip] = useState<Trip | null>(null);
 
   return (
     <>
@@ -57,7 +76,7 @@ function Dashboard() {
           </p>
         )}
 
-        <CreateTripSheet
+        <TripSheet
           trigger={
             <Button className="h-12 w-full rounded-2xl font-bold">
               <Plus className="size-4" strokeWidth={2.6} />
@@ -88,7 +107,7 @@ function Dashboard() {
           <ul className="space-y-3">
             {trips.map((trip) => (
               <li key={trip.id} className="ios-card p-4">
-                <div className="flex min-w-0 items-center gap-2">
+                <div className="flex min-w-0 items-center gap-1">
                   <Link
                     to="/trip/$tripId"
                     params={{ tripId: trip.id }}
@@ -106,24 +125,66 @@ function Dashboard() {
                       </span>
                     </p>
                   </Link>
-                  <button
-                    onClick={() => {
-                      removeTrip(trip.id)
-                        .then(() => toast.success(t("tripDeleted")))
-                        .catch(() => toast.error(t("syncError")));
-                    }}
-                    aria-label={t("deleteTrip")}
-                    className="shrink-0 rounded-full p-2 text-muted-foreground transition-colors hover:text-destructive"
-                  >
-                    <Trash2 className="size-4" />
-                  </button>
                   <ChevronRight className="size-4 shrink-0 text-muted-foreground" />
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <button
+                        aria-label={t("openTrip")}
+                        className="shrink-0 rounded-full p-2 text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground"
+                      >
+                        <MoreHorizontal className="size-4" />
+                      </button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end" className="min-w-40">
+                      <DropdownMenuItem onSelect={() => setEditingTrip(trip)}>
+                        <Pencil className="size-4" />
+                        {t("editTrip")}
+                      </DropdownMenuItem>
+                      <DropdownMenuItem
+                        className="text-destructive focus:text-destructive"
+                        onSelect={() => setDeletingTrip(trip)}
+                      >
+                        <Trash2 className="size-4" />
+                        {t("deleteTrip")}
+                      </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
                 </div>
               </li>
             ))}
           </ul>
         )}
       </main>
+
+      {editingTrip && (
+        <TripSheet
+          trip={editingTrip}
+          trigger={<span className="hidden" />}
+        />
+      )}
+
+      <AlertDialog open={deletingTrip != null} onOpenChange={(o) => !o && setDeletingTrip(null)}>
+        <AlertDialogContent className="max-w-xs rounded-3xl">
+          <AlertDialogHeader>
+            <AlertDialogTitle>{t("deleteTripConfirmTitle")}</AlertDialogTitle>
+            <AlertDialogDescription>{t("deleteTripConfirmBody")}</AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel className="rounded-2xl">{t("cancel")}</AlertDialogCancel>
+            <AlertDialogAction
+              className="rounded-2xl bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              onClick={() => {
+                if (!deletingTrip) return;
+                removeTrip(deletingTrip.id)
+                  .then(() => toast.success(t("tripDeleted")))
+                  .catch(() => toast.error(t("syncError")));
+              }}
+            >
+              {t("deleteBtn")}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </>
   );
 }

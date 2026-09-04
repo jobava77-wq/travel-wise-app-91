@@ -12,32 +12,64 @@ import {
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { useI18n } from "@/lib/i18n";
-import { useExpenses } from "@/lib/expenses";
+import { useExpenses, type Trip } from "@/lib/expenses";
 
-export function CreateTripSheet({ trigger }: { trigger: ReactNode }) {
+export function TripSheet({ trigger, trip }: { trigger: ReactNode; trip?: Trip }) {
   const { t } = useI18n();
-  const { addTrip } = useExpenses();
+  const { addTrip, updateTrip } = useExpenses();
   const navigate = useNavigate();
-  const [open, setOpen] = useState(false);
+  const isEdit = !!trip;
   const today = new Date().toISOString().slice(0, 10);
-  const [name, setName] = useState("");
-  const [start, setStart] = useState(today);
-  const [end, setEnd] = useState(today);
 
+  const [open, setOpen] = useState(false);
+  const [name, setName] = useState(trip?.name ?? "");
+  const [start, setStart] = useState(trip?.startDate ?? today);
+  const [end, setEnd] = useState(trip?.endDate ?? today);
+  const [budget, setBudget] = useState(trip?.budgetGel != null ? String(trip.budgetGel) : "");
   const [saving, setSaving] = useState(false);
+
+  const budgetNum = budget.trim() === "" ? null : Number(budget.replace(",", ".")) || null;
   const valid = name.trim().length > 0 && !!start && !!end && end >= start;
+
+  const openSheet = (o: boolean) => {
+    if (o && trip) {
+      setName(trip.name);
+      setStart(trip.startDate);
+      setEnd(trip.endDate);
+      setBudget(trip.budgetGel != null ? String(trip.budgetGel) : "");
+    }
+    setOpen(o);
+  };
 
   const submit = async () => {
     if (!valid || saving) return;
     setSaving(true);
     try {
-      const id = await addTrip({ name: name.trim(), startDate: start, endDate: end });
-      toast.success(t("tripCreated"));
-      setName("");
-      setStart(today);
-      setEnd(today);
+      if (isEdit && trip) {
+        await updateTrip(trip.id, {
+          name: name.trim(),
+          startDate: start,
+          endDate: end,
+          budgetGel: budgetNum,
+        });
+        toast.success(t("tripUpdated"));
+      } else {
+        const id = await addTrip({
+          name: name.trim(),
+          startDate: start,
+          endDate: end,
+          budgetGel: budgetNum,
+        });
+        toast.success(t("tripCreated"));
+        void navigate({ to: "/trip/$tripId", params: { tripId: id } });
+      }
       setOpen(false);
-      void navigate({ to: "/trip/$tripId", params: { tripId: id } });
+      if (!isEdit) {
+        setName("");
+        setStart(today);
+        setEnd(today);
+        setBudget("");
+      }
     } catch {
       toast.error(t("syncError"));
     } finally {
@@ -46,11 +78,13 @@ export function CreateTripSheet({ trigger }: { trigger: ReactNode }) {
   };
 
   return (
-    <Drawer open={open} onOpenChange={setOpen}>
+    <Drawer open={open} onOpenChange={openSheet}>
       <DrawerTrigger asChild>{trigger}</DrawerTrigger>
       <DrawerContent className="mx-auto max-w-md rounded-t-3xl">
         <DrawerHeader className="pb-2 text-center">
-          <DrawerTitle className="text-lg font-extrabold">{t("newTrip")}</DrawerTitle>
+          <DrawerTitle className="text-lg font-extrabold">
+            {isEdit ? t("editTrip") : t("newTrip")}
+          </DrawerTitle>
         </DrawerHeader>
 
         <div className="space-y-4 px-5 pb-8">
@@ -108,6 +142,26 @@ export function CreateTripSheet({ trigger }: { trigger: ReactNode }) {
             </div>
           </div>
 
+          <div>
+            <label
+              htmlFor="tripBudget"
+              className="mb-1.5 block text-xs font-semibold uppercase tracking-wider text-muted-foreground"
+            >
+              {t("budget")}
+            </label>
+            <div className="flex items-center gap-1.5 rounded-2xl bg-secondary px-3">
+              <span className="text-lg font-bold text-muted-foreground">₾</span>
+              <Input
+                id="tripBudget"
+                inputMode="decimal"
+                placeholder="0"
+                value={budget}
+                onChange={(e) => setBudget(e.target.value.replace(/[^0-9.,]/g, ""))}
+                className="tabular h-12 border-0 bg-transparent px-0 text-base font-extrabold shadow-none focus-visible:ring-0"
+              />
+            </div>
+          </div>
+
           <div className="flex gap-3 pt-1">
             <Button
               variant="secondary"
@@ -122,7 +176,7 @@ export function CreateTripSheet({ trigger }: { trigger: ReactNode }) {
               onClick={() => void submit()}
             >
               {saving && <Loader2 className="size-4 animate-spin" />}
-              {t("create")}
+              {isEdit ? t("save") : t("create")}
             </Button>
           </div>
         </div>
