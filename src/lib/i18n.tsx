@@ -62,7 +62,7 @@ const dict = {
   joinTrip: { en: "Join Trip", ka: "შეერთება" },
   createTrip: { en: "Create Trip", ka: "შექმნა" },
   username: { en: "Username", ka: "მომხმარებელი" },
-  usernamePlaceholder: { en: "Giorgi", ka: "გიორგი" },
+  usernamePlaceholder: { en: "Who is travelling?", ka: "ვინ მოგზაურობს?" },
   pinCode: { en: "5-digit PIN", ka: "5-ნიშნა კოდი" },
   pinHint: {
     en: "Everyone with this PIN shares the same trip data.",
