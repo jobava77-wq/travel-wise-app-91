@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, type ReactNode } from "react";
 import { Loader2, Plus } from "lucide-react";
 import { toast } from "sonner";
 import {
@@ -26,19 +26,45 @@ import {
   toGel,
   useExpenses,
   type CategoryId,
+  type Expense,
 } from "@/lib/expenses";
 import { useRates, type Currency } from "@/lib/rates";
 
-export function AddExpenseFab() {
+export function ExpenseSheet({
+  trigger,
+  expense,
+  open: controlledOpen,
+  onOpenChange,
+}: {
+  trigger?: ReactNode;
+  /** when set, the sheet edits this expense instead of adding a new one */
+  expense?: Expense | null;
+  open?: boolean;
+  onOpenChange?: (open: boolean) => void;
+}) {
   const { t } = useI18n();
-  const { addExpense, activeTrip, loading } = useExpenses();
+  const { addExpense, updateExpense } = useExpenses();
   const { rates } = useRates();
-  const [open, setOpen] = useState(false);
+  const isEdit = expense != null;
+
+  const [internalOpen, setInternalOpen] = useState(false);
+  const open = controlledOpen ?? internalOpen;
+  const setOpen = (o: boolean) => {
+    if (o && expense) {
+      setAmount(String(expense.amount));
+      setCurrency(expense.currency);
+      setCategory(expense.category);
+      setNote(expense.note ?? "");
+    }
+    setInternalOpen(o);
+    onOpenChange?.(o);
+  };
+
   const [saving, setSaving] = useState(false);
-  const [amount, setAmount] = useState("");
-  const [currency, setCurrency] = useState<Currency>("GEL");
-  const [category, setCategory] = useState<CategoryId>("tickets");
-  const [note, setNote] = useState("");
+  const [amount, setAmount] = useState(expense ? String(expense.amount) : "");
+  const [currency, setCurrency] = useState<Currency>(expense?.currency ?? "GEL");
+  const [category, setCategory] = useState<CategoryId>(expense?.category ?? "tickets");
+  const [note, setNote] = useState(expense?.note ?? "");
 
   const num = Number(amount.replace(",", ".")) || 0;
   const valid = num > 0;
@@ -54,8 +80,18 @@ export function AddExpenseFab() {
     if (!valid || saving) return;
     setSaving(true);
     try {
-      await addExpense({ amount: num, currency, category, note: note.trim() });
-      reset();
+      if (isEdit) {
+        await updateExpense(expense.id, {
+          amount: num,
+          currency,
+          category,
+          note: note.trim(),
+        });
+        toast.success(t("expenseUpdated"));
+      } else {
+        await addExpense({ amount: num, currency, category, note: note.trim() });
+      }
+      if (!isEdit) reset();
       setOpen(false);
     } catch {
       toast.error(t("syncError"));
@@ -69,23 +105,16 @@ export function AddExpenseFab() {
       open={open}
       onOpenChange={(o) => {
         setOpen(o);
-        if (!o) reset();
+        if (!o && !isEdit) reset();
       }}
     >
-      <DrawerTrigger asChild>
-        <button
-          aria-label={t("addExpense")}
-          disabled={loading || !activeTrip}
-          className="fixed bottom-[76px] left-1/2 z-40 flex h-14 -translate-x-1/2 items-center gap-2 whitespace-nowrap rounded-full bg-primary px-6 text-sm font-bold text-primary-foreground shadow-[var(--shadow-fab)] transition-transform active:scale-95 disabled:opacity-50"
-        >
-          <Plus className="size-5" strokeWidth={2.6} />
-          {t("addExpense")}
-        </button>
-      </DrawerTrigger>
+      {trigger && <DrawerTrigger asChild>{trigger}</DrawerTrigger>}
 
       <DrawerContent className="mx-auto max-w-md rounded-t-3xl">
         <DrawerHeader className="pb-2 text-center">
-          <DrawerTitle className="text-lg font-extrabold">{t("addExpense")}</DrawerTitle>
+          <DrawerTitle className="text-lg font-extrabold">
+            {isEdit ? t("editExpense") : t("addExpense")}
+          </DrawerTitle>
         </DrawerHeader>
 
         <div className="space-y-5 px-5 pb-8">
@@ -200,5 +229,25 @@ export function AddExpenseFab() {
         </div>
       </DrawerContent>
     </Drawer>
+  );
+}
+
+export function AddExpenseFab() {
+  const { t } = useI18n();
+  const { activeTrip, loading } = useExpenses();
+
+  return (
+    <ExpenseSheet
+      trigger={
+        <button
+          aria-label={t("addExpense")}
+          disabled={loading || !activeTrip}
+          className="fixed bottom-[76px] left-1/2 z-40 flex h-14 -translate-x-1/2 items-center gap-2 whitespace-nowrap rounded-full bg-primary px-6 text-sm font-bold text-primary-foreground shadow-[var(--shadow-fab)] transition-transform active:scale-95 disabled:opacity-50"
+        >
+          <Plus className="size-5" strokeWidth={2.6} />
+          {t("addExpense")}
+        </button>
+      }
+    />
   );
 }
