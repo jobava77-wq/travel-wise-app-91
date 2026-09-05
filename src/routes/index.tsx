@@ -160,6 +160,8 @@ function Dashboard() {
         <TripSheet
           trip={editingTrip}
           trigger={<span className="hidden" />}
+          open
+          onOpenChange={(o) => !o && setEditingTrip(null)}
         />
       )}
 
