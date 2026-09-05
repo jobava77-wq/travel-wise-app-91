@@ -14,14 +14,29 @@ import { Button } from "@/components/ui/button";
 import { useI18n } from "@/lib/i18n";
 import { useExpenses, type Trip } from "@/lib/expenses";
 
-export function TripSheet({ trigger, trip }: { trigger: ReactNode; trip?: Trip }) {
+export function TripSheet({
+  trigger,
+  trip,
+  open: openProp,
+  onOpenChange,
+}: {
+  trigger: ReactNode;
+  trip?: Trip | null;
+  open?: boolean;
+  onOpenChange?: (open: boolean) => void;
+}) {
   const { t } = useI18n();
   const { addTrip, updateTrip } = useExpenses();
   const navigate = useNavigate();
   const isEdit = !!trip;
   const today = new Date().toISOString().slice(0, 10);
 
-  const [open, setOpen] = useState(false);
+  const [internalOpen, setInternalOpen] = useState(false);
+  const open = openProp ?? internalOpen;
+  const setOpen = (o: boolean) => {
+    if (openProp === undefined) setInternalOpen(o);
+    onOpenChange?.(o);
+  };
   const [name, setName] = useState(trip?.name ?? "");
   const [start, setStart] = useState(trip?.startDate ?? today);
   const [end, setEnd] = useState(trip?.endDate ?? today);

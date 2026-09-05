@@ -316,11 +316,16 @@ export function ExpensesProvider({ children }: { children: ReactNode }) {
       },
       updateTrip: async (id, patch) => {
         if (!pin) return;
-        const payload: Record<string, unknown> = {};
-        if (patch.name !== undefined) payload["name"] = patch.name;
-        if (patch.startDate !== undefined) payload["start_date"] = patch.startDate;
-        if (patch.endDate !== undefined) payload["end_date"] = patch.endDate;
-        if (patch.budgetGel !== undefined) payload["budget_gel"] = patch.budgetGel;
+        const payload: {
+          name?: string;
+          start_date?: string;
+          end_date?: string;
+          budget_gel?: number | null;
+        } = {};
+        if (patch.name !== undefined) payload.name = patch.name;
+        if (patch.startDate !== undefined) payload.start_date = patch.startDate;
+        if (patch.endDate !== undefined) payload.end_date = patch.endDate;
+        if (patch.budgetGel !== undefined) payload.budget_gel = patch.budgetGel;
         const { data, error } = await supabase
           .from("trips")
           .update(payload)
