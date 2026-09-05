@@ -74,8 +74,7 @@ export function TripSheet({
           startDate: start,
           endDate: end,
           budgetGel: budgetNum,
-          budget_gel: undefined,
-        } as never);
+        });
         toast.success(t("tripCreated"));
         void navigate({ to: "/trip/$tripId", params: { tripId: id } });
       }
