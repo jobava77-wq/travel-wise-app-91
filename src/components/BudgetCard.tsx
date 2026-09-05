@@ -38,11 +38,11 @@ export function BudgetCard() {
       {budget != null && (
         <div>
           <div className="flex items-center justify-between">
-            <p className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+            <p className="flex shrink-0 items-center gap-1.5 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
               <Wallet className="size-3.5" />
               {t("budgetProgress")}
             </p>
-            <p className="tabular text-xs font-bold">
+            <p className="tabular min-w-0 truncate text-xs font-bold">
               {formatGel(spent)} / {formatGel(budget)}
             </p>
           </div>
@@ -61,7 +61,7 @@ export function BudgetCard() {
             />
           </div>
           <p
-            className={`tabular mt-1.5 text-xs font-bold ${
+            className={`tabular mt-1.5 truncate text-xs font-bold ${
               spent > budget ? "text-destructive" : "text-muted-foreground"
             }`}
           >
