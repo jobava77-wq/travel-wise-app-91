@@ -15,13 +15,14 @@ import { MapPickerLazy } from "@/components/MapLazy";
 import { useI18n } from "@/lib/i18n";
 import { useExpenses, type Trip } from "@/lib/expenses";
 
-async function reverseGeocode(lat: number, lng: number) {
+async function reverseGeocode(lat: number, lng: number, lang: string) {
   try {
     const res = await fetch(
-      `https://nominatim.openstreetmap.org/reverse?format=jsonv2&zoom=10&lat=${lat}&lon=${lng}`,
+      `https://nominatim.openstreetmap.org/reverse?format=jsonv2&zoom=10&accept-language=${lang}&lat=${lat}&lon=${lng}`,
       { headers: { Accept: "application/json" } },
     );
     if (!res.ok) return "";
+
     const data = (await res.json()) as {
       address?: { city?: string; town?: string; village?: string; state?: string; country?: string };
       display_name?: string;
