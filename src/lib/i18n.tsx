@@ -125,9 +125,10 @@ const dict = {
   gotIt: { en: "Got it", ka: "გასაგებია" },
   aboutFeedback: { en: "About & Feedback", ka: "აპლიკაციის შესახებ და უკუკავშირი" },
   aboutText: {
-    en: "A streamlined, secure travel expense tracker designed for seamless trips. Developed by Joba. I hope you find it useful!",
-    ka: "მოხერხებული და დაცული სამოგზაურო ხარჯების აღრიცხვა უპრობლემო მოგზაურობისთვის. შექმნილია Joba-ს მიერ. ვიმედოვნებ, გამოგადგებათ!",
+    en: "A streamlined, secure travel expense tracker designed for seamless trips. Developed by Giorgi Jobava. I hope you find it useful!",
+    ka: "მოხერხებული და დაცული სამოგზაურო ხარჯების აღრიცხვა უპრობლემო მოგზაურობისთვის. შექმნილია გიორგი ჯობავას მიერ. ვიმედოვნებ, გამოგადგებათ!",
   },
+  lastUpdated: { en: "Last updated", ka: "ბოლო განახლება" },
   feedbackTitle: { en: "Submit Feedback", ka: "უკუკავშირის გაგზავნა" },
   feedbackPlaceholder: {
     en: "Ideas, bugs, anything you'd like to see…",

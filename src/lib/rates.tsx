@@ -18,21 +18,26 @@ export const CURRENCY_SYMBOL: Record<Currency, string> = {
 };
 
 const RATES_KEY = "customRates";
+const RATES_UPDATED_KEY = "customRatesUpdatedAt";
 
 type Ctx = {
   rates: Rates;
+  /** ISO timestamp of the last rates change, or null if never saved */
+  updatedAt: string | null;
   setRate: (currency: Extract<Currency, "USD" | "EUR">, value: number) => void;
   resetRates: () => void;
 };
 
 const RatesContext = createContext<Ctx>({
   rates: DEFAULT_RATES,
+  updatedAt: null,
   setRate: () => {},
   resetRates: () => {},
 });
 
 export function RatesProvider({ children }: { children: ReactNode }) {
   const [rates, setRates] = useState<Rates>(DEFAULT_RATES);
+  const [updatedAt, setUpdatedAt] = useState<string | null>(null);
   const [hydrated, setHydrated] = useState(false);
 
   useEffect(() => {
@@ -46,6 +51,7 @@ export function RatesProvider({ children }: { children: ReactNode }) {
           EUR: Number(saved.EUR) > 0 ? Number(saved.EUR) : DEFAULT_RATES.EUR,
         });
       }
+      setUpdatedAt(window.localStorage.getItem(RATES_UPDATED_KEY));
     } catch {
       /* ignore */
     }
@@ -57,14 +63,28 @@ export function RatesProvider({ children }: { children: ReactNode }) {
     window.localStorage.setItem(RATES_KEY, JSON.stringify(rates));
   }, [rates, hydrated]);
 
+  useEffect(() => {
+    if (!hydrated) return;
+    if (updatedAt) window.localStorage.setItem(RATES_UPDATED_KEY, updatedAt);
+    else window.localStorage.removeItem(RATES_UPDATED_KEY);
+  }, [updatedAt, hydrated]);
+
+  const touch = () => setUpdatedAt(new Date().toISOString());
+
   const value = useMemo<Ctx>(
     () => ({
       rates,
-      setRate: (currency, v) =>
-        setRates((prev) => ({ ...prev, [currency]: v > 0 ? v : DEFAULT_RATES[currency] })),
-      resetRates: () => setRates(DEFAULT_RATES),
+      updatedAt,
+      setRate: (currency, v) => {
+        setRates((prev) => ({ ...prev, [currency]: v > 0 ? v : DEFAULT_RATES[currency] }));
+        touch();
+      },
+      resetRates: () => {
+        setRates(DEFAULT_RATES);
+        setUpdatedAt(null);
+      },
     }),
-    [rates],
+    [rates, updatedAt],
   );
 
   return <RatesContext.Provider value={value}>{children}</RatesContext.Provider>;

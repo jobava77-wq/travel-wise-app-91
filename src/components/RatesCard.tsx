@@ -42,11 +42,17 @@ function RateInput({ currency }: { currency: "EUR" | "USD" }) {
 }
 
 export function RatesCard() {
-  const { t } = useI18n();
-  const { rates, setRate, resetRates } = useRates();
+  const { t, lang } = useI18n();
+  const { rates, updatedAt, setRate, resetRates } = useRates();
   const fetchLive = useServerFn(fetchNbgRates);
   const [fetching, setFetching] = useState(false);
   const custom = rates.EUR !== DEFAULT_RATES.EUR || rates.USD !== DEFAULT_RATES.USD;
+  const updatedLabel = updatedAt
+    ? new Date(updatedAt).toLocaleString(lang === "ka" ? "ka-GE" : "en-GB", {
+        dateStyle: "medium",
+        timeStyle: "short",
+      })
+    : null;
 
   const useLiveRates = async () => {
     if (fetching) return;
@@ -98,6 +104,11 @@ export function RatesCard() {
           </Button>
         )}
       </div>
+      {updatedLabel && (
+        <p className="tabular mt-2.5 text-center text-[11px] font-medium text-muted-foreground">
+          {t("lastUpdated")}: {updatedLabel}
+        </p>
+      )}
     </section>
   );
 }
