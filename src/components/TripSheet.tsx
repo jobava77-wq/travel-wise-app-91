@@ -47,7 +47,7 @@ export function TripSheet({
   open?: boolean;
   onOpenChange?: (open: boolean) => void;
 }) {
-  const { t } = useI18n();
+  const { t, lang } = useI18n();
   const { addTrip, updateTrip } = useExpenses();
   const navigate = useNavigate();
   const isEdit = !!trip;
