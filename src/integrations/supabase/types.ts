@@ -20,7 +20,12 @@ export type Database = {
           category: string
           created_at: string
           currency: string
+          custom_category: string | null
           id: string
+          lat: number | null
+          lng: number | null
+          spent_at: string
+          tags: string[]
           title: string
           trip_id: string
         }
@@ -29,7 +34,12 @@ export type Database = {
           category?: string
           created_at?: string
           currency?: string
+          custom_category?: string | null
           id?: string
+          lat?: number | null
+          lng?: number | null
+          spent_at?: string
+          tags?: string[]
           title?: string
           trip_id?: string
         }
@@ -38,7 +48,12 @@ export type Database = {
           category?: string
           created_at?: string
           currency?: string
+          custom_category?: string | null
           id?: string
+          lat?: number | null
+          lng?: number | null
+          spent_at?: string
+          tags?: string[]
           title?: string
           trip_id?: string
         }
@@ -52,12 +67,39 @@ export type Database = {
           },
         ]
       }
+      feedback: {
+        Row: {
+          created_at: string
+          id: string
+          message: string
+          owner_name: string
+          owner_pin: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          message: string
+          owner_name?: string
+          owner_pin?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          message?: string
+          owner_name?: string
+          owner_pin?: string
+        }
+        Relationships: []
+      }
       trips: {
         Row: {
           budget_gel: number | null
           created_at: string
           end_date: string
           id: string
+          lat: number | null
+          lng: number | null
+          location_name: string | null
           name: string
           owner_name: string
           owner_pin: string
@@ -68,6 +110,9 @@ export type Database = {
           created_at?: string
           end_date?: string
           id: string
+          lat?: number | null
+          lng?: number | null
+          location_name?: string | null
           name: string
           owner_name?: string
           owner_pin?: string
@@ -78,6 +123,9 @@ export type Database = {
           created_at?: string
           end_date?: string
           id?: string
+          lat?: number | null
+          lng?: number | null
+          location_name?: string | null
           name?: string
           owner_name?: string
           owner_pin?: string
