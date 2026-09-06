@@ -1,13 +1,11 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { ChevronRight, Download, Info, LogOut } from "lucide-react";
+import { ChevronRight, Info, LogOut } from "lucide-react";
 import { toast } from "sonner";
 import { AppHeader, LanguageToggle } from "@/components/AppHeader";
 import { Button } from "@/components/ui/button";
 import { RatesCard } from "@/components/RatesCard";
 import { useI18n } from "@/lib/i18n";
 import { useSession } from "@/lib/session";
-import { useExpenses } from "@/lib/expenses";
-import { downloadTripCsv } from "@/lib/csv";
 import { APP_VERSION } from "@/lib/version";
 
 export const Route = createFileRoute("/settings")({
@@ -32,7 +30,6 @@ export const Route = createFileRoute("/settings")({
 function SettingsPage() {
   const { t } = useI18n();
   const { username, signOut } = useSession();
-  const { activeTrip, expenses } = useExpenses();
 
   return (
     <>
@@ -64,20 +61,6 @@ function SettingsPage() {
           </span>
           <ChevronRight className="size-4 text-muted-foreground" aria-hidden />
         </Link>
-
-        <Button
-          variant="secondary"
-          className="h-12 w-full rounded-2xl font-bold"
-          disabled={!activeTrip || expenses.length === 0}
-          onClick={() => {
-            if (!activeTrip) return;
-            downloadTripCsv(activeTrip, expenses);
-            toast.success(t("exported"));
-          }}
-        >
-          <Download className="size-4" />
-          {t("exportCsv")}
-        </Button>
 
         <Button
           variant="secondary"
