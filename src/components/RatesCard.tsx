@@ -104,6 +104,11 @@ export function RatesCard() {
           </Button>
         )}
       </div>
+      {updatedLabel && (
+        <p className="tabular mt-2.5 text-center text-[11px] font-medium text-muted-foreground">
+          {t("lastUpdated")}: {updatedLabel}
+        </p>
+      )}
     </section>
   );
 }
