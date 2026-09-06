@@ -1,11 +1,11 @@
 import { useEffect, useState } from "react";
 import { useServerFn } from "@tanstack/react-start";
-import { Loader2, RotateCcw, RefreshCw } from "lucide-react";
+import { Loader2, RefreshCw } from "lucide-react";
 import { toast } from "sonner";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { useI18n } from "@/lib/i18n";
-import { DEFAULT_RATES, useRates } from "@/lib/rates";
+import { useRates } from "@/lib/rates";
 import { fetchNbgRates } from "@/lib/rates.functions";
 
 function RateInput({ currency }: { currency: "EUR" | "USD" }) {
@@ -43,10 +43,9 @@ function RateInput({ currency }: { currency: "EUR" | "USD" }) {
 
 export function RatesCard() {
   const { t, lang } = useI18n();
-  const { rates, updatedAt, setRate, resetRates } = useRates();
+  const { rates, updatedAt, setRate } = useRates();
   const fetchLive = useServerFn(fetchNbgRates);
   const [fetching, setFetching] = useState(false);
-  const custom = rates.EUR !== DEFAULT_RATES.EUR || rates.USD !== DEFAULT_RATES.USD;
   const updatedLabel = updatedAt
     ? new Date(updatedAt).toLocaleString(lang === "ka" ? "ka-GE" : "en-GB", {
         dateStyle: "medium",
@@ -79,31 +78,19 @@ export function RatesCard() {
         <RateInput currency="EUR" />
         <RateInput currency="USD" />
       </div>
-      <div className="mt-4 flex gap-2">
-        <Button
-          variant="secondary"
-          className="h-10 flex-1 rounded-2xl text-xs font-bold"
-          disabled={fetching}
-          onClick={() => void useLiveRates()}
-        >
-          {fetching ? (
-            <Loader2 className="size-3.5 animate-spin" />
-          ) : (
-            <RefreshCw className="size-3.5" />
-          )}
-          {t("fetchLiveRates")}
-        </Button>
-        {custom && (
-          <Button
-            variant="secondary"
-            className="h-10 rounded-2xl px-3 text-xs font-bold"
-            onClick={resetRates}
-            aria-label={t("resetRates")}
-          >
-            <RotateCcw className="size-3.5" />
-          </Button>
+      <Button
+        variant="secondary"
+        className="mt-4 h-10 w-full rounded-2xl text-xs font-bold"
+        disabled={fetching}
+        onClick={() => void useLiveRates()}
+      >
+        {fetching ? (
+          <Loader2 className="size-3.5 animate-spin" />
+        ) : (
+          <RefreshCw className="size-3.5" />
         )}
-      </div>
+        {t("fetchLiveRates")}
+      </Button>
       {updatedLabel && (
         <p className="tabular mt-2.5 text-center text-[11px] font-medium text-muted-foreground">
           {t("lastUpdated")}: {updatedLabel}
