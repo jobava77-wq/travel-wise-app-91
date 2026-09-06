@@ -1,6 +1,6 @@
 import { useState, type ReactNode } from "react";
 import { useNavigate } from "@tanstack/react-router";
-import { Loader2 } from "lucide-react";
+import { Loader2, MapPin } from "lucide-react";
 import { toast } from "sonner";
 import {
   Drawer,
@@ -11,8 +11,29 @@ import {
 } from "@/components/ui/drawer";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
+import { MapPickerLazy } from "@/components/MapLazy";
 import { useI18n } from "@/lib/i18n";
 import { useExpenses, type Trip } from "@/lib/expenses";
+
+async function reverseGeocode(lat: number, lng: number) {
+  try {
+    const res = await fetch(
+      `https://nominatim.openstreetmap.org/reverse?format=jsonv2&zoom=10&lat=${lat}&lon=${lng}`,
+      { headers: { Accept: "application/json" } },
+    );
+    if (!res.ok) return "";
+    const data = (await res.json()) as {
+      address?: { city?: string; town?: string; village?: string; state?: string; country?: string };
+      display_name?: string;
+    };
+    const a = data.address ?? {};
+    const place = a.city ?? a.town ?? a.village ?? a.state ?? "";
+    if (place && a.country) return `${place}, ${a.country}`;
+    return place || a.country || data.display_name?.split(",").slice(0, 2).join(",") || "";
+  } catch {
+    return "";
+  }
+}
 
 export function TripSheet({
   trigger,
@@ -41,10 +62,26 @@ export function TripSheet({
   const [start, setStart] = useState(trip?.startDate ?? today);
   const [end, setEnd] = useState(trip?.endDate ?? today);
   const [budget, setBudget] = useState(trip?.budgetGel != null ? String(trip.budgetGel) : "");
+  const [lat, setLat] = useState<number | null>(trip?.lat ?? null);
+  const [lng, setLng] = useState<number | null>(trip?.lng ?? null);
+  const [locationName, setLocationName] = useState(trip?.locationName ?? "");
+  const [geocoding, setGeocoding] = useState(false);
   const [saving, setSaving] = useState(false);
 
   const budgetNum = budget.trim() === "" ? null : Number(budget.replace(",", ".")) || null;
   const valid = name.trim().length > 0 && !!start && !!end && end >= start;
+
+  const pick = (nextLat: number, nextLng: number) => {
+    setLat(nextLat);
+    setLng(nextLng);
+    setGeocoding(true);
+    void reverseGeocode(nextLat, nextLng).then((place) => {
+      setGeocoding(false);
+      if (!place) return;
+      setLocationName(place);
+      setName((prev) => (prev.trim() === "" ? place : prev));
+    });
+  };
 
   const openSheet = (o: boolean) => {
     if (o && trip) {
@@ -52,6 +89,9 @@ export function TripSheet({
       setStart(trip.startDate);
       setEnd(trip.endDate);
       setBudget(trip.budgetGel != null ? String(trip.budgetGel) : "");
+      setLat(trip.lat);
+      setLng(trip.lng);
+      setLocationName(trip.locationName);
     }
     setOpen(o);
   };
@@ -59,22 +99,21 @@ export function TripSheet({
   const submit = async () => {
     if (!valid || saving) return;
     setSaving(true);
+    const payload = {
+      name: name.trim(),
+      startDate: start,
+      endDate: end,
+      budgetGel: budgetNum,
+      locationName: locationName.trim(),
+      lat,
+      lng,
+    };
     try {
       if (isEdit && trip) {
-        await updateTrip(trip.id, {
-          name: name.trim(),
-          startDate: start,
-          endDate: end,
-          budgetGel: budgetNum,
-        });
+        await updateTrip(trip.id, payload);
         toast.success(t("tripUpdated"));
       } else {
-        const id = await addTrip({
-          name: name.trim(),
-          startDate: start,
-          endDate: end,
-          budgetGel: budgetNum,
-        });
+        const id = await addTrip(payload);
         toast.success(t("tripCreated"));
         void navigate({ to: "/trip/$tripId", params: { tripId: id } });
       }
@@ -84,6 +123,9 @@ export function TripSheet({
         setStart(today);
         setEnd(today);
         setBudget("");
+        setLat(null);
+        setLng(null);
+        setLocationName("");
       }
     } catch {
       toast.error(t("syncError"));
@@ -95,7 +137,7 @@ export function TripSheet({
   return (
     <Drawer open={open} onOpenChange={openSheet}>
       <DrawerTrigger asChild>{trigger}</DrawerTrigger>
-      <DrawerContent className="mx-auto max-w-md rounded-t-3xl">
+      <DrawerContent className="mx-auto max-h-[92vh] max-w-md overflow-y-auto rounded-t-3xl">
         <DrawerHeader className="pb-2 text-center">
           <DrawerTitle className="text-lg font-extrabold">
             {isEdit ? t("editTrip") : t("newTrip")}
@@ -103,6 +145,17 @@ export function TripSheet({
         </DrawerHeader>
 
         <div className="space-y-4 px-5 pb-8">
+          <div>
+            <span className="mb-1.5 block text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+              {t("tripLocation")}
+            </span>
+            <MapPickerLazy lat={lat} lng={lng} onPick={pick} />
+            <p className="mt-1.5 flex items-center gap-1.5 text-xs font-semibold text-muted-foreground">
+              <MapPin className="size-3.5 shrink-0" aria-hidden />
+              {geocoding ? t("locating") : locationName || t("mapHint")}
+            </p>
+          </div>
+
           <div>
             <label
               htmlFor="tripName"
@@ -112,7 +165,6 @@ export function TripSheet({
             </label>
             <Input
               id="tripName"
-              autoFocus
               value={name}
               placeholder={t("tripNamePlaceholder")}
               onChange={(e) => setName(e.target.value)}
