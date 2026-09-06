@@ -145,17 +145,22 @@ function RootShell({ children }: { children: ReactNode }) {
 function AppShell() {
   const { ready, pin } = useSession();
 
-  if (!ready) return <div className="min-h-screen bg-background" />;
-  if (!pin) return <PinGate />;
-
   return (
     <ExpensesProvider>
-      <div className="min-h-screen bg-background">
-        {/* Required: nested routes render here. Removing <Outlet /> breaks all child routes. */}
-        <Outlet />
-      </div>
-      <BottomNav />
-      <WhatsNew />
+      {!ready ? (
+        <div className="min-h-screen bg-background" />
+      ) : !pin ? (
+        <PinGate />
+      ) : (
+        <>
+          <div className="min-h-screen bg-background">
+            {/* Required: nested routes render here. Removing <Outlet /> breaks all child routes. */}
+            <Outlet />
+          </div>
+          <BottomNav />
+          <WhatsNew />
+        </>
+      )}
     </ExpensesProvider>
   );
 }
