@@ -76,7 +76,7 @@ export function TripSheet({
     setLat(nextLat);
     setLng(nextLng);
     setGeocoding(true);
-    void reverseGeocode(nextLat, nextLng).then((place) => {
+    void reverseGeocode(nextLat, nextLng, lang).then((place) => {
       setGeocoding(false);
       if (!place) return;
       setLocationName(place);
