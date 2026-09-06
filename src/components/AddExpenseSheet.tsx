@@ -373,7 +373,7 @@ export function ExpenseSheet({
             <Switch checked={geo} onCheckedChange={toggleGeo} aria-label={t("saveLocation")} />
           </div>
 
-          <div className="flex gap-3 pt-1">
+          <div className="sticky bottom-0 z-10 -mx-5 mt-2 flex gap-3 border-t bg-background p-4 pb-6">
             <Button
               variant="secondary"
               className="h-12 flex-1 rounded-2xl font-bold"
