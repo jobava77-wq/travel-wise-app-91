@@ -18,6 +18,7 @@ import { SessionProvider, useSession } from "@/lib/session";
 import { PinGate } from "@/components/PinGate";
 import { BottomNav } from "@/components/BottomNav";
 import { Toaster } from "@/components/ui/sonner";
+import { WhatsNew } from "@/components/WhatsNew";
 
 
 function NotFoundComponent() {
@@ -154,6 +155,7 @@ function AppShell() {
         <Outlet />
       </div>
       <BottomNav />
+      <WhatsNew />
     </ExpensesProvider>
   );
 }

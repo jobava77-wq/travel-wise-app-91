@@ -7,6 +7,8 @@ import {
   Wifi,
   Bus,
   MapPin,
+  ShieldCheck,
+  Tag,
   type LucideIcon,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
@@ -24,7 +26,9 @@ export type CategoryId =
   | "food"
   | "internet"
   | "transport"
-  | "local";
+  | "local"
+  | "insurance"
+  | "other";
 
 export const CATEGORIES: {
   id: CategoryId;
@@ -39,7 +43,21 @@ export const CATEGORIES: {
   { id: "internet", key: "cat_internet", icon: Wifi, color: "var(--chart-5)" },
   { id: "transport", key: "cat_transport", icon: Bus, color: "var(--chart-6)" },
   { id: "local", key: "cat_local", icon: MapPin, color: "var(--chart-7)" },
+  { id: "insurance", key: "cat_insurance", icon: ShieldCheck, color: "var(--chart-2)" },
+  { id: "other", key: "cat_other", icon: Tag, color: "var(--chart-3)" },
 ];
+
+/** Quick-tap presets that pre-fill note + category in one tap. */
+export const QUICK_ACTIONS: { key: TKey; category: CategoryId }[] = [
+  { key: "quick_coffee", category: "food" },
+  { key: "quick_supermarket", category: "food" },
+  { key: "quick_snack", category: "food" },
+  { key: "quick_water", category: "food" },
+  { key: "quick_taxi", category: "transport" },
+  { key: "quick_tips", category: "local" },
+];
+
+export const TAGS: TKey[] = ["tag_kids", "tag_family", "tag_work", "tag_fun"];
 
 export const categoryById = (id: CategoryId) =>
   CATEGORIES.find((c) => c.id === id) ?? CATEGORIES[0]!;
@@ -51,8 +69,27 @@ export type Expense = {
   currency: Currency;
   amountGel: number;
   category: CategoryId;
+  /** free-text name used when category === "other" */
+  customCategory: string;
   note?: string;
+  /** ISO date (YYYY-MM-DD) the money was spent */
+  spentAt: string;
+  tags: string[];
+  lat: number | null;
+  lng: number | null;
   createdAt: number;
+};
+
+export type ExpenseInput = {
+  amount: number;
+  currency: Currency;
+  category: CategoryId;
+  note?: string;
+  customCategory?: string;
+  spentAt?: string;
+  tags?: string[];
+  lat?: number | null;
+  lng?: number | null;
 };
 
 export type Trip = {
@@ -63,6 +100,9 @@ export type Trip = {
   endDate: string;
   /** optional planned spend in GEL */
   budgetGel: number | null;
+  locationName: string;
+  lat: number | null;
+  lng: number | null;
   createdAt: number;
 };
 
@@ -97,6 +137,11 @@ type ExpenseRow = {
   currency: string;
   category: string;
   created_at: string;
+  spent_at?: string | null;
+  custom_category?: string | null;
+  tags?: string[] | null;
+  lat?: number | string | null;
+  lng?: number | string | null;
 };
 
 type TripRow = {
@@ -108,7 +153,13 @@ type TripRow = {
   budget_gel?: number | string | null;
   owner_pin?: string;
   owner_name?: string;
+  location_name?: string | null;
+  lat?: number | string | null;
+  lng?: number | string | null;
 };
+
+const num = (v: number | string | null | undefined) =>
+  v == null || v === "" ? null : (Number(v) as number);
 
 const mapTrip = (r: TripRow): Trip => ({
   id: r.id,
@@ -116,6 +167,9 @@ const mapTrip = (r: TripRow): Trip => ({
   startDate: r.start_date,
   endDate: r.end_date,
   budgetGel: r.budget_gel == null ? null : Number(r.budget_gel) || null,
+  locationName: r.location_name ?? "",
+  lat: num(r.lat),
+  lng: num(r.lng),
   createdAt: new Date(r.created_at).getTime(),
 });
 
@@ -140,13 +194,8 @@ type Ctx = {
   byCategory: { id: CategoryId; value: number; color: string }[];
   tripTotal: (tripId: string) => number;
   tripCount: (tripId: string) => number;
-  addExpense: (
-    e: Pick<Expense, "amount" | "currency" | "category"> & { note?: string },
-  ) => Promise<void>;
-  updateExpense: (
-    id: string,
-    patch: Pick<Expense, "amount" | "currency" | "category"> & { note?: string },
-  ) => Promise<void>;
+  addExpense: (e: ExpenseInput) => Promise<void>;
+  updateExpense: (id: string, patch: ExpenseInput) => Promise<void>;
   removeExpense: (id: string) => Promise<void>;
   clearAll: () => Promise<void>;
 };
@@ -159,6 +208,8 @@ const slugify = (name: string) =>
     .replace(/[^a-z0-9]+/g, "-")
     .replace(/(^-|-$)/g, "")
     .slice(0, 40) || "trip";
+
+const todayIso = () => new Date().toISOString().slice(0, 10);
 
 export function ExpensesProvider({ children }: { children: ReactNode }) {
   const { rates } = useRates();
@@ -271,7 +322,12 @@ export function ExpensesProvider({ children }: { children: ReactNode }) {
         currency,
         amountGel: toGel(amount, currency, rates),
         category: asCategory(r.category),
+        customCategory: r.custom_category ?? "",
         note: r.title ?? "",
+        spentAt: r.spent_at ?? new Date(r.created_at).toISOString().slice(0, 10),
+        tags: r.tags ?? [],
+        lat: num(r.lat),
+        lng: num(r.lng),
         createdAt: new Date(r.created_at).getTime(),
       };
     });
@@ -304,6 +360,9 @@ export function ExpensesProvider({ children }: { children: ReactNode }) {
             start_date: t.startDate,
             end_date: t.endDate,
             budget_gel: t.budgetGel ?? null,
+            location_name: t.locationName || null,
+            lat: t.lat,
+            lng: t.lng,
             owner_pin: pin,
             owner_name: username ?? "",
           })
@@ -321,11 +380,17 @@ export function ExpensesProvider({ children }: { children: ReactNode }) {
           start_date?: string;
           end_date?: string;
           budget_gel?: number | null;
+          location_name?: string | null;
+          lat?: number | null;
+          lng?: number | null;
         } = {};
         if (patch.name !== undefined) payload.name = patch.name;
         if (patch.startDate !== undefined) payload.start_date = patch.startDate;
         if (patch.endDate !== undefined) payload.end_date = patch.endDate;
         if (patch.budgetGel !== undefined) payload.budget_gel = patch.budgetGel;
+        if (patch.locationName !== undefined) payload.location_name = patch.locationName || null;
+        if (patch.lat !== undefined) payload.lat = patch.lat;
+        if (patch.lng !== undefined) payload.lng = patch.lng;
         const { data, error } = await supabase
           .from("trips")
           .update(payload)
@@ -370,6 +435,11 @@ export function ExpensesProvider({ children }: { children: ReactNode }) {
             amount: e.amount,
             currency: e.currency,
             category: e.category,
+            custom_category: e.customCategory || null,
+            spent_at: e.spentAt ?? todayIso(),
+            tags: e.tags ?? [],
+            lat: e.lat ?? null,
+            lng: e.lng ?? null,
           })
           .select("*")
           .single();
@@ -385,6 +455,11 @@ export function ExpensesProvider({ children }: { children: ReactNode }) {
             amount: patch.amount,
             currency: patch.currency,
             category: patch.category,
+            custom_category: patch.customCategory || null,
+            spent_at: patch.spentAt ?? todayIso(),
+            tags: patch.tags ?? [],
+            lat: patch.lat ?? null,
+            lng: patch.lng ?? null,
           })
           .eq("id", id)
           .select("*")

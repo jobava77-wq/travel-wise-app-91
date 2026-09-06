@@ -14,9 +14,9 @@ import { useI18n } from "@/lib/i18n";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ExpenseSheet } from "@/components/AddExpenseSheet";
 
-const dayKey = (ts: number) => {
-  const d = new Date(ts);
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+const parseIso = (iso: string) => {
+  const [y, m, d] = iso.split("-").map(Number);
+  return new Date(y ?? 1970, (m ?? 1) - 1, d ?? 1);
 };
 
 export function ExpenseList() {
@@ -38,7 +38,7 @@ export function ExpenseList() {
   const groups = useMemo(() => {
     const map = new Map<string, Expense[]>();
     for (const e of filtered) {
-      const key = dayKey(e.createdAt);
+      const key = e.spentAt;
       const list = map.get(key);
       if (list) list.push(e);
       else map.set(key, [e]);
@@ -47,7 +47,7 @@ export function ExpenseList() {
       .sort(([a], [b]) => b.localeCompare(a))
       .map(([key, list]) => ({
         key,
-        label: new Date(list[0]!.createdAt).toLocaleDateString(locale, {
+        label: parseIso(key).toLocaleDateString(locale, {
           weekday: "short",
           day: "numeric",
           month: "short",
@@ -143,7 +143,11 @@ export function ExpenseList() {
                           <Icon className="size-5" style={{ color: cat.color }} />
                         </div>
                         <div className="min-w-0 flex-1">
-                          <p className="truncate text-sm font-bold">{t(cat.key)}</p>
+                          <p className="truncate text-sm font-bold">
+                            {e.category === "other" && e.customCategory
+                              ? e.customCategory
+                              : t(cat.key)}
+                          </p>
                           <p className="truncate text-xs text-muted-foreground">
                             {e.note ||
                               new Date(e.createdAt).toLocaleTimeString(locale, {
