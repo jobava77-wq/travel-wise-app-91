@@ -182,14 +182,14 @@ export function ExpenseSheet({
     >
       {trigger && <DrawerTrigger asChild>{trigger}</DrawerTrigger>}
 
-      <DrawerContent className="mx-auto max-h-[92vh] max-w-md overflow-y-auto rounded-t-3xl">
-        <DrawerHeader className="pb-2 text-center">
+      <DrawerContent className="mx-auto flex h-[100dvh] max-w-md flex-col overflow-hidden rounded-t-3xl">
+        <DrawerHeader className="shrink-0 pb-2 text-center">
           <DrawerTitle className="text-lg font-extrabold">
             {isEdit ? t("editExpense") : t("addExpense")}
           </DrawerTitle>
         </DrawerHeader>
 
-        <div className="space-y-5 px-5 pb-8">
+        <div className="flex-1 space-y-5 overflow-y-auto px-5 pb-4">
           <div>
             <span className="mb-2 flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
               <Zap className="size-3.5" aria-hidden /> {t("quickAdd")}
@@ -372,24 +372,24 @@ export function ExpenseSheet({
             </span>
             <Switch checked={geo} onCheckedChange={toggleGeo} aria-label={t("saveLocation")} />
           </div>
+        </div>
 
-          <div className="sticky bottom-0 z-10 -mx-5 mt-2 flex gap-3 border-t bg-background p-4 pb-6">
-            <Button
-              variant="secondary"
-              className="h-12 flex-1 rounded-2xl font-bold"
-              onClick={() => setOpen(false)}
-            >
-              {t("cancel")}
-            </Button>
-            <Button
-              className="h-12 flex-1 rounded-2xl font-bold"
-              disabled={!valid || saving}
-              onClick={() => void submit()}
-            >
-              {saving && <Loader2 className="size-4 animate-spin" />}
-              {t("save")}
-            </Button>
-          </div>
+        <div className="z-50 flex shrink-0 gap-3 border-t bg-background p-4 pb-[max(1rem,env(safe-area-inset-bottom))]">
+          <Button
+            variant="secondary"
+            className="h-12 flex-1 rounded-2xl font-bold"
+            onClick={() => setOpen(false)}
+          >
+            {t("cancel")}
+          </Button>
+          <Button
+            className="h-12 flex-1 rounded-2xl font-bold"
+            disabled={!valid || saving}
+            onClick={() => void submit()}
+          >
+            {saving && <Loader2 className="size-4 animate-spin" />}
+            {t("save")}
+          </Button>
         </div>
       </DrawerContent>
     </Drawer>
