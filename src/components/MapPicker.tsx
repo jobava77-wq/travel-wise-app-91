@@ -21,11 +21,11 @@ function ClickCatcher({ onPick }: { onPick: (lat: number, lng: number) => void }
   return null;
 }
 
-function Recenter({ lat, lng }: { lat: number; lng: number }) {
+function Recenter({ lat, lng, zoom }: { lat: number; lng: number; zoom?: number }) {
   const map = useMap();
   useEffect(() => {
-    map.setView([lat, lng], map.getZoom());
-  }, [lat, lng, map]);
+    map.setView([lat, lng], zoom ?? map.getZoom());
+  }, [lat, lng, map, zoom]);
   return null;
 }
 
@@ -52,7 +52,6 @@ async function searchNominatim(query: string, signal?: AbortSignal) {
 
 function LocationSearch({ onPick }: { onPick: (lat: number, lng: number) => void }) {
   const { t } = useI18n();
-  const map = useMap();
   const [query, setQuery] = useState("");
   const [results, setResults] = useState<NominatimResult[]>([]);
   const [loading, setLoading] = useState(false);
@@ -65,7 +64,6 @@ function LocationSearch({ onPick }: { onPick: (lat: number, lng: number) => void
     selectedQuery.current = result.display_name;
     setQuery(result.display_name);
     setResults([]);
-    map.setView([lat, lng], 15);
     onPick(lat, lng);
   };
 
@@ -123,7 +121,7 @@ function LocationSearch({ onPick }: { onPick: (lat: number, lng: number) => void
 
   return (
     <div
-      className="absolute left-3 right-3 top-3 z-[1000]"
+      className="sticky top-0 z-30 bg-background/95 py-2 backdrop-blur"
       onClick={(event) => event.stopPropagation()}
     >
       <form onSubmit={submitSearch} className="relative">
@@ -131,6 +129,12 @@ function LocationSearch({ onPick }: { onPick: (lat: number, lng: number) => void
         <Input
           value={query}
           onChange={(event) => setQuery(event.target.value)}
+          onFocus={(event) => {
+            const input = event.currentTarget;
+            window.requestAnimationFrame(() => {
+              input.scrollIntoView({ behavior: "smooth", block: "nearest" });
+            });
+          }}
           placeholder={t("searchLocationPlaceholder")}
           aria-label={t("searchLocation")}
           className="h-11 rounded-2xl border-0 bg-background/95 pl-9 pr-20 font-medium shadow-lg backdrop-blur"
@@ -154,7 +158,7 @@ function LocationSearch({ onPick }: { onPick: (lat: number, lng: number) => void
       </form>
 
       {results.length > 0 && (
-        <div className="mt-2 overflow-hidden rounded-2xl border bg-background/95 shadow-lg backdrop-blur">
+        <div className="absolute left-0 right-0 top-full z-40 max-h-48 overflow-y-auto rounded-2xl border bg-card shadow-lg">
           {results.map((result) => (
             <button
               key={result.place_id}
@@ -182,26 +186,35 @@ export default function MapPicker({
   onPick: (lat: number, lng: number) => void;
 }) {
   const [center] = useState<[number, number]>([lat ?? 41.7151, lng ?? 44.8271]);
+  const [searchCenter, setSearchCenter] = useState<{ lat: number; lng: number } | null>(null);
 
   return (
-    <MapContainer
-      center={center}
-      zoom={lat != null ? 9 : 5}
-      scrollWheelZoom={false}
-      className="h-52 w-full overflow-hidden rounded-2xl"
-    >
-      <LocationSearch onPick={onPick} />
-      <TileLayer
-        attribution="&copy; OpenStreetMap"
-        url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+    <div className="relative overflow-visible">
+      <LocationSearch
+        onPick={(nextLat, nextLng) => {
+          setSearchCenter({ lat: nextLat, lng: nextLng });
+          onPick(nextLat, nextLng);
+        }}
       />
-      <ClickCatcher onPick={onPick} />
-      {lat != null && lng != null && (
-        <>
-          <Marker position={[lat, lng]} icon={pinIcon} />
-          <Recenter lat={lat} lng={lng} />
-        </>
-      )}
-    </MapContainer>
+      <MapContainer
+        center={center}
+        zoom={lat != null ? 9 : 5}
+        scrollWheelZoom={false}
+        className="h-52 w-full overflow-hidden rounded-2xl"
+      >
+        <TileLayer
+          attribution="&copy; OpenStreetMap"
+          url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+        />
+        <ClickCatcher onPick={onPick} />
+        {searchCenter && <Recenter lat={searchCenter.lat} lng={searchCenter.lng} zoom={15} />}
+        {lat != null && lng != null && (
+          <>
+            <Marker position={[lat, lng]} icon={pinIcon} />
+            <Recenter lat={lat} lng={lng} />
+          </>
+        )}
+      </MapContainer>
+    </div>
   );
 }
