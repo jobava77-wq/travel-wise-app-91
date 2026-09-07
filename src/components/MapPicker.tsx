@@ -30,31 +30,67 @@ function Recenter({ lat, lng, zoom }: { lat: number; lng: number; zoom?: number 
 }
 
 type NominatimResult = {
-  place_id: number;
+  place_id: string | number;
   display_name: string;
   lat: string;
   lon: string;
 };
 
-async function searchNominatim(query: string, signal?: AbortSignal) {
+type PhotonFeature = {
+  geometry?: { coordinates?: [number, number] };
+  properties?: { name?: string; city?: string; state?: string; country?: string };
+};
+
+function photonResult(feature: PhotonFeature, index: number): NominatimResult | null {
+  const coordinates = feature.geometry?.coordinates;
+  if (!coordinates || !Number.isFinite(coordinates[0]) || !Number.isFinite(coordinates[1])) return null;
+  const properties = feature.properties ?? {};
+  const displayName = [properties.name, properties.city, properties.state, properties.country]
+    .filter(Boolean)
+    .filter((value, position, values) => values.indexOf(value) === position)
+    .join(", ");
+  if (!displayName) return null;
+  return {
+    place_id: `photon-${index}-${coordinates.join("-")}`,
+    display_name: displayName,
+    lat: String(coordinates[1]),
+    lon: String(coordinates[0]),
+  };
+}
+
+async function searchLocations(query: string, lang: string, signal?: AbortSignal) {
   const params = new URLSearchParams({
     format: "jsonv2",
     limit: "5",
     q: query,
+    "accept-language": lang,
   });
-  const response = await fetch(`https://nominatim.openstreetmap.org/search?${params}`, {
-    headers: { Accept: "application/json" },
-    signal,
-  });
-  if (!response.ok) throw new Error("Location search failed");
-  return (await response.json()) as NominatimResult[];
+  try {
+    const response = await fetch(`https://nominatim.openstreetmap.org/search?${params}`, {
+      headers: { Accept: "application/json" },
+      signal,
+    });
+    if (!response.ok) throw new Error("Nominatim request failed");
+    return (await response.json()) as NominatimResult[];
+  } catch (error) {
+    if ((error as { name?: string }).name === "AbortError") throw error;
+    const fallbackParams = new URLSearchParams({ q: query, limit: "5", lang });
+    const fallbackResponse = await fetch(`https://photon.komoot.io/api/?${fallbackParams}`, { signal });
+    if (!fallbackResponse.ok) throw new Error("Location search failed");
+    const payload = (await fallbackResponse.json()) as { features?: PhotonFeature[] };
+    return (payload.features ?? [])
+      .map(photonResult)
+      .filter((result): result is NominatimResult => result !== null);
+  }
 }
 
 function LocationSearch({ onPick }: { onPick: (lat: number, lng: number) => void }) {
-  const { t } = useI18n();
+  const { lang, t } = useI18n();
   const [query, setQuery] = useState("");
   const [results, setResults] = useState<NominatimResult[]>([]);
   const [loading, setLoading] = useState(false);
+  const [hasSearched, setHasSearched] = useState(false);
+  const [searchFailed, setSearchFailed] = useState(false);
   const selectedQuery = useRef<string | null>(null);
 
   const selectResult = (result: NominatimResult) => {
@@ -64,7 +100,39 @@ function LocationSearch({ onPick }: { onPick: (lat: number, lng: number) => void
     selectedQuery.current = result.display_name;
     setQuery(result.display_name);
     setResults([]);
+    setHasSearched(false);
+    setSearchFailed(false);
     onPick(lat, lng);
+  };
+
+  const runSearch = (value: string, currentResults = results) => {
+    const normalizedValue = value.trim();
+    if (normalizedValue.length < 3) {
+      setResults([]);
+      setHasSearched(false);
+      setSearchFailed(false);
+      return;
+    }
+    if (currentResults[0]) {
+      selectResult(currentResults[0]);
+      return;
+    }
+    setLoading(true);
+    setHasSearched(false);
+    setSearchFailed(false);
+    void searchLocations(normalizedValue, lang)
+      .then((nextResults) => {
+        setResults(nextResults);
+        setHasSearched(true);
+      })
+      .catch((error: unknown) => {
+        if ((error as { name?: string }).name !== "AbortError") {
+          setResults([]);
+          setHasSearched(true);
+          setSearchFailed(true);
+        }
+      })
+      .finally(() => setLoading(false));
   };
 
   useEffect(() => {
@@ -76,6 +144,8 @@ function LocationSearch({ onPick }: { onPick: (lat: number, lng: number) => void
       return;
     }
     setResults([]);
+    setHasSearched(false);
+    setSearchFailed(false);
     if (value.length < 3) {
       setLoading(false);
       return;
@@ -84,10 +154,17 @@ function LocationSearch({ onPick }: { onPick: (lat: number, lng: number) => void
     const controller = new AbortController();
     const timer = window.setTimeout(() => {
       setLoading(true);
-      void searchNominatim(value, controller.signal)
-        .then(setResults)
+      void searchLocations(value, lang, controller.signal)
+        .then((nextResults) => {
+          setResults(nextResults);
+          setHasSearched(true);
+        })
         .catch((error: unknown) => {
-          if ((error as { name?: string }).name !== "AbortError") setResults([]);
+          if ((error as { name?: string }).name !== "AbortError") {
+            setResults([]);
+            setHasSearched(true);
+            setSearchFailed(true);
+          }
         })
         .finally(() => {
           if (!controller.signal.aborted) setLoading(false);
@@ -98,25 +175,11 @@ function LocationSearch({ onPick }: { onPick: (lat: number, lng: number) => void
       controller.abort();
       window.clearTimeout(timer);
     };
-  }, [query]);
+  }, [query, lang]);
 
   const submitSearch = (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    const first = results[0];
-    if (first) {
-      selectResult(first);
-      return;
-    }
-    const value = query.trim();
-    if (value.length < 3) return;
-    setLoading(true);
-    void searchNominatim(value)
-      .then((nextResults) => {
-        if (nextResults[0]) selectResult(nextResults[0]);
-        else setResults([]);
-      })
-      .catch(() => setResults([]))
-      .finally(() => setLoading(false));
+    runSearch(query);
   };
 
   return (
@@ -129,6 +192,12 @@ function LocationSearch({ onPick }: { onPick: (lat: number, lng: number) => void
         <Input
           value={query}
           onChange={(event) => setQuery(event.target.value)}
+          onKeyDown={(event) => {
+            if (event.key === "Enter") {
+              event.preventDefault();
+              runSearch(event.currentTarget.value);
+            }
+          }}
           onFocus={(event) => {
             const input = event.currentTarget;
             window.requestAnimationFrame(() => {
@@ -157,9 +226,9 @@ function LocationSearch({ onPick }: { onPick: (lat: number, lng: number) => void
         </div>
       </form>
 
-      {results.length > 0 && (
+      {(results.length > 0 || (hasSearched && query.trim().length >= 3)) && (
         <div className="absolute left-0 right-0 top-full z-40 max-h-48 overflow-y-auto rounded-2xl border bg-card shadow-lg">
-          {results.map((result) => (
+          {results.length > 0 ? results.map((result) => (
             <button
               key={result.place_id}
               type="button"
@@ -169,7 +238,11 @@ function LocationSearch({ onPick }: { onPick: (lat: number, lng: number) => void
               <MapPin className="mt-0.5 size-4 shrink-0 text-primary" aria-hidden />
               <span className="line-clamp-2 font-medium">{result.display_name}</span>
             </button>
-          ))}
+          )) : (
+            <p className="px-3 py-3 text-sm text-muted-foreground">
+              {searchFailed ? t("locationSearchFailed") : t("locationNotFound")}
+            </p>
+          )}
         </div>
       )}
     </div>

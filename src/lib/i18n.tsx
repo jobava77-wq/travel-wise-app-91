@@ -163,6 +163,8 @@ const dict = {
   searchLocation: { en: "Search location", ka: "მდებარეობის ძიება" },
   searchLocationPlaceholder: { en: "Search location...", ka: "აირჩიეთ მდებარეობა..." },
   clearSearch: { en: "Clear search", ka: "ძიების გასუფთავება" },
+  locationNotFound: { en: "Location not found", ka: "მდებარეობა ვერ მოიძებნა" },
+  locationSearchFailed: { en: "Location search failed", ka: "მდებარეობის ძიება ვერ შესრულდა" },
   listView: { en: "List", ka: "სია" },
   mapView: { en: "Map", ka: "რუკა" },
   noGeoExpenses: {
