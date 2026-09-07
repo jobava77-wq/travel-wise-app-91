@@ -166,6 +166,12 @@ const dict = {
     en: "No expenses with a location yet",
     ka: "ჯერ არ არის ხარჯი ადგილმდებარეობით",
   },
+  manageQuick: { en: "Manage quick add", ka: "სწრაფი დამატების მართვა" },
+  quickTitle: { en: "Title", ka: "დასახელება" },
+  addItem: { en: "Add", ka: "დამატება" },
+  newTag: { en: "New tag", ka: "ახალი თეგი" },
+  editList: { en: "Edit", ka: "რედაქტირება" },
+  doneEditing: { en: "Done", ka: "დასრულება" },
   loadingMap: { en: "Loading map…", ka: "რუკა იტვირთება…" },
 } as const;
 
