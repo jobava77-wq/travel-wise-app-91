@@ -1,4 +1,6 @@
-export const APP_VERSION = "1.2.0";
+import packageJson from "../../package.json";
+
+export const APP_VERSION = packageJson.version;
 
 /** Bilingual highlights shown once per new version in the "What's New" modal. */
 export const CHANGELOG: { en: string; ka: string }[] = [

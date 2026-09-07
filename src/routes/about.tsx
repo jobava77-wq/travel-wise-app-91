@@ -64,6 +64,11 @@ function AboutPage() {
           </p>
         </section>
 
+        <section className="ios-card p-5">
+          <h2 className="text-sm font-extrabold">{t("designed")}</h2>
+          <p className="mt-2 text-sm font-medium text-muted-foreground">{t("designedBy")}</p>
+        </section>
+
         <section className="ios-card space-y-3 p-5">
           <h2 className="text-sm font-extrabold">{t("feedbackTitle")}</h2>
           <Textarea
