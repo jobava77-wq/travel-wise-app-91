@@ -260,6 +260,7 @@ export function ExpensesProvider({ children }: { children: ReactNode }) {
       const { data } = await supabase
         .from("expenses")
         .select("*")
+        .eq("owner_id", user.id)
         .in("trip_id", tripIds)
         .order("created_at", { ascending: false });
       if (!alive) return;
@@ -283,7 +284,7 @@ export function ExpensesProvider({ children }: { children: ReactNode }) {
             return prev.filter((r) => r.id !== old.id);
           }
           const row = payload.new as ExpenseRow;
-          if (!tripIds.includes(row.trip_id)) return prev;
+          if (row.owner_id !== user.id || !tripIds.includes(row.trip_id)) return prev;
           const rest = prev.filter((r) => r.id !== row.id);
           return [row, ...rest].sort((a, b) => b.created_at.localeCompare(a.created_at));
         });
