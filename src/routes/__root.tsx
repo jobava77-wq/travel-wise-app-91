@@ -7,7 +7,7 @@ import {
   HeadContent,
   Scripts,
 } from "@tanstack/react-router";
-import { useEffect, type ReactNode } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import { Loader2 } from "lucide-react";
 
 import appCss from "../styles.css?url";
@@ -145,10 +145,23 @@ function RootShell({ children }: { children: ReactNode }) {
 
 function AppShell() {
   const { isLoading, session } = useSession();
+  const [isAuthCallbackPending, setIsAuthCallbackPending] = useState(false);
+
+  useEffect(() => {
+    if (typeof window === "undefined" || !window.location.hash) return;
+
+    setIsAuthCallbackPending(true);
+    const timeout = window.setTimeout(() => setIsAuthCallbackPending(false), 5000);
+    return () => window.clearTimeout(timeout);
+  }, []);
+
+  useEffect(() => {
+    if (session) setIsAuthCallbackPending(false);
+  }, [session]);
 
   return (
     <ExpensesProvider>
-      {isLoading ? (
+      {isLoading || isAuthCallbackPending ? (
         <div className="flex min-h-screen items-center justify-center bg-background">
           <Loader2 className="size-6 animate-spin text-muted-foreground" aria-label="Loading" />
         </div>
