@@ -8,6 +8,7 @@ import {
   Scripts,
 } from "@tanstack/react-router";
 import { useEffect, type ReactNode } from "react";
+import { Loader2 } from "lucide-react";
 
 import appCss from "../styles.css?url";
 import { reportLovableError } from "../lib/lovable-error-reporting";
@@ -143,13 +144,15 @@ function RootShell({ children }: { children: ReactNode }) {
 }
 
 function AppShell() {
-  const { ready, user } = useSession();
+  const { isLoading, session } = useSession();
 
   return (
     <ExpensesProvider>
-      {!ready ? (
-        <div className="min-h-screen bg-background" />
-      ) : !user ? (
+      {isLoading ? (
+        <div className="flex min-h-screen items-center justify-center bg-background">
+          <Loader2 className="size-6 animate-spin text-muted-foreground" aria-label="Loading" />
+        </div>
+      ) : session === null ? (
         <AuthScreen />
       ) : (
         <>

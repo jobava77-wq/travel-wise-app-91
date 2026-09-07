@@ -1,9 +1,11 @@
 import { createContext, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
-import type { User } from "@supabase/supabase-js";
+import type { Session, User } from "@supabase/supabase-js";
 import { supabase } from "@/integrations/supabase/client";
 
 type Ctx = {
+  isLoading: boolean;
   ready: boolean;
+  session: Session | null;
   user: User | null;
   username: string | null;
   signIn: (email: string, password: string) => Promise<{ error: string | null }>;
@@ -13,7 +15,9 @@ type Ctx = {
 };
 
 const SessionContext = createContext<Ctx>({
+  isLoading: true,
   ready: false,
+  session: null,
   user: null,
   username: null,
   signIn: async () => ({ error: null }),
@@ -23,23 +27,41 @@ const SessionContext = createContext<Ctx>({
 });
 
 export function SessionProvider({ children }: { children: ReactNode }) {
+  const [isLoading, setIsLoading] = useState(true);
   const [ready, setReady] = useState(false);
+  const [session, setSession] = useState<Session | null>(null);
   const [user, setUser] = useState<User | null>(null);
 
   useEffect(() => {
     let mounted = true;
-    void supabase.auth.getSession().then(({ data }) => {
-      if (!mounted) return;
-      setUser(data.session?.user ?? null);
-      setReady(true);
-    });
-    const { data } = supabase.auth.onAuthStateChange((event, session) => {
-      if (event === "SIGNED_IN" || session?.user) {
-        setUser(session.user);
-      } else if (event === "SIGNED_OUT") {
-        setUser(null);
+
+    const loadSession = async () => {
+      try {
+        const { data } = await supabase.auth.getSession();
+        if (!mounted) return;
+        setSession(data.session);
+        setUser(data.session?.user ?? null);
+      } catch (error) {
+        console.error("[Auth] Failed to load session:", error);
+      } finally {
+        if (mounted) {
+          setIsLoading(false);
+          setReady(true);
+        }
       }
-      setReady(true);
+    };
+
+    void loadSession();
+
+    const { data } = supabase.auth.onAuthStateChange((event, session) => {
+      console.log("[Auth Event]:", event, session);
+      if (!mounted) return;
+      if (event === "INITIAL_SESSION" || event === "SIGNED_IN" || event === "TOKEN_REFRESHED" || event === "SIGNED_OUT") {
+        setSession(session);
+        setUser(session?.user ?? null);
+        setIsLoading(false);
+        setReady(true);
+      }
     });
     return () => {
       mounted = false;
@@ -49,7 +71,9 @@ export function SessionProvider({ children }: { children: ReactNode }) {
 
   const value = useMemo<Ctx>(
     () => ({
+      isLoading,
       ready,
+      session,
       user,
       username: user?.user_metadata?.full_name ?? user?.email ?? null,
       signIn: async (email, password) => {
@@ -71,7 +95,7 @@ export function SessionProvider({ children }: { children: ReactNode }) {
         await supabase.auth.signOut();
       },
     }),
-    [ready, user],
+    [isLoading, ready, session, user],
   );
 
   return <SessionContext.Provider value={value}>{children}</SessionContext.Provider>;
