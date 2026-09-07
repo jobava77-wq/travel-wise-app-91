@@ -374,7 +374,7 @@ export function ExpenseSheet({
           </div>
         </div>
 
-        <div className="z-50 flex shrink-0 gap-3 border-t bg-background p-4 pb-[max(1rem,env(safe-area-inset-bottom))]">
+        <div className="sticky bottom-0 z-50 flex gap-3 border-t bg-background p-4 pb-[max(1rem,env(safe-area-inset-bottom))]">
           <Button
             variant="secondary"
             className="h-12 flex-1 rounded-2xl font-bold"
