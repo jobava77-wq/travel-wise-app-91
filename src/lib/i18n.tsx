@@ -127,11 +127,13 @@ const dict = {
   gotIt: { en: "Got it", ka: "გასაგებია" },
   aboutFeedback: { en: "About & Feedback", ka: "აპლიკაციის შესახებ და უკუკავშირი" },
   aboutText: {
-    en: "A streamlined, secure travel expense tracker designed for seamless trips. I hope you find it useful!",
-    ka: "მოხერხებული და დაცული სამოგზაურო ხარჯების აღრიცხვა უპრობლემო მოგზაურობისთვის. ვიმედოვნებ, გამოგადგებათ!",
+    en: "Effortlessly track your travel expenses and enjoy every moment. Hope this app makes your journeys smoother and more delightful!",
+    ka: "მარტივად მართე სამოგზაურო ხარჯები და ისიამოვნე თითოეული წუთით. იმედი მაქვს, ეს აპლიკაცია მოგზაურობას კიდევ უფრო კომფორტულს გახდის!",
   },
-  designed: { en: "Designed", ka: "დიზაინი" },
-  designedBy: { en: "Designed by გიორგი ჯობავა (Giorgi Jobava)", ka: "Designed by გიორგი ჯობავა (Giorgi Jobava)" },
+  developerAttribution: {
+    en: "Designed by Giorgi Jobava",
+    ka: "შექმნილია გიორგი ჯობავას მიერ",
+  },
   lastUpdated: { en: "Last updated", ka: "ბოლო განახლება" },
   feedbackTitle: { en: "Submit Feedback", ka: "უკუკავშირის გაგზავნა" },
   feedbackPlaceholder: {
