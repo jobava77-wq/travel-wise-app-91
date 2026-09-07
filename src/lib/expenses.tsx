@@ -152,7 +152,7 @@ type TripRow = {
   start_date: string;
   end_date: string;
   created_at: string;
-  budget_gel?: number | string | null;
+  budget?: number | string | null;
   owner_id?: string | null;
   owner_name?: string;
   location_name?: string | null;
@@ -168,8 +168,8 @@ const mapTrip = (r: TripRow): Trip => ({
   name: r.name,
   startDate: r.start_date,
   endDate: r.end_date,
-  budgetGel: r.budget_gel == null ? null : Number(r.budget_gel) || null,
-  budget: r.budget_gel == null ? null : Number(r.budget_gel) || null,
+  budgetGel: r.budget == null ? null : Number(r.budget) || null,
+  budget: r.budget == null ? null : Number(r.budget) || null,
   locationName: r.location_name ?? "",
   lat: num(r.lat),
   lng: num(r.lng),
@@ -363,7 +363,7 @@ export function ExpensesProvider({ children }: { children: ReactNode }) {
             name: t.name,
             start_date: t.startDate,
             end_date: t.endDate,
-            budget_gel: t.budgetGel ?? null,
+            budget: t.budgetGel ?? null,
             owner_id: user.id,
           })
           .select("*")
@@ -375,22 +375,16 @@ export function ExpensesProvider({ children }: { children: ReactNode }) {
       },
       updateTrip: async (id, patch) => {
         if (!user) return;
-        const payload: {
-          name?: string;
-          start_date?: string;
-          end_date?: string;
-          budget_gel?: number | null;
-          location_name?: string | null;
-          lat?: number | null;
-          lng?: number | null;
-        } = {};
-        if (patch.name !== undefined) payload.name = patch.name;
-        if (patch.startDate !== undefined) payload.start_date = patch.startDate;
-        if (patch.endDate !== undefined) payload.end_date = patch.endDate;
-        if (patch.budgetGel !== undefined) payload.budget_gel = patch.budgetGel;
-        if (patch.locationName !== undefined) payload.location_name = patch.locationName || null;
-        if (patch.lat !== undefined) payload.lat = patch.lat;
-        if (patch.lng !== undefined) payload.lng = patch.lng;
+        const current = tripRows.find((trip) => trip.id === id);
+        if (!current) throw new Error("Trip not found");
+        const payload = {
+          id,
+          name: patch.name ?? current.name,
+          start_date: patch.startDate ?? current.start_date,
+          end_date: patch.endDate ?? current.end_date,
+          budget: patch.budgetGel ?? (current.budget == null ? null : Number(current.budget)),
+          owner_id: user.id,
+        };
         const { data, error } = await supabase
           .from("trips")
           .update(payload)

@@ -99,7 +99,7 @@ export type Database = {
       }
       trips: {
         Row: {
-          budget_gel: number | null
+          budget: number | null
           created_at: string
           end_date: string
           id: string
@@ -113,7 +113,7 @@ export type Database = {
           start_date: string
         }
         Insert: {
-          budget_gel?: number | null
+          budget?: number | null
           created_at?: string
           end_date?: string
           id: string
@@ -127,7 +127,7 @@ export type Database = {
           start_date?: string
         }
         Update: {
-          budget_gel?: number | null
+          budget?: number | null
           created_at?: string
           end_date?: string
           id?: string
