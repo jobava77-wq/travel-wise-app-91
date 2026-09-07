@@ -138,14 +138,14 @@ export function TripSheet({
   return (
     <Drawer open={open} onOpenChange={openSheet}>
       <DrawerTrigger asChild>{trigger}</DrawerTrigger>
-      <DrawerContent className="mx-auto max-h-[92vh] max-w-md overflow-y-auto rounded-t-3xl">
-        <DrawerHeader className="pb-2 text-center">
+      <DrawerContent className="mx-auto flex max-h-[90dvh] max-w-md flex-col overflow-hidden rounded-t-3xl">
+        <DrawerHeader className="shrink-0 pb-2 text-center">
           <DrawerTitle className="text-lg font-extrabold">
             {isEdit ? t("editTrip") : t("newTrip")}
           </DrawerTitle>
         </DrawerHeader>
 
-        <div className="space-y-4 px-5 pb-8">
+        <div className="min-h-0 flex-1 space-y-4 overflow-y-auto px-4 py-2">
           <div>
             <span className="mb-1.5 block text-xs font-semibold uppercase tracking-wider text-muted-foreground">
               {t("tripLocation")}
@@ -230,7 +230,10 @@ export function TripSheet({
             </div>
           </div>
 
-          <div className="flex gap-3 pt-1">
+        </div>
+
+        <div className="shrink-0 border-t bg-background px-4 py-3">
+          <div className="flex gap-3">
             <Button
               variant="secondary"
               className="h-12 flex-1 rounded-2xl font-bold"
