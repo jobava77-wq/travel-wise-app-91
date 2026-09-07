@@ -5,6 +5,8 @@ export type Lang = "en" | "ka";
 const dict = {
   appName: { en: "Voyage", ka: "მოგზაურობა" },
   totalSpent: { en: "Total spent", ka: "სულ დახარჯული" },
+  globalOverview: { en: "Global overview", ka: "საერთო მიმოხილვა" },
+  globalAcrossTrips: { en: "Across all trips", ka: "ყველა მოგზაურობის მიხედვით" },
   byCategory: { en: "By category", ka: "კატეგორიების მიხედვით" },
   noData: { en: "No expenses yet", ka: "ხარჯები ჯერ არ არის" },
   converters: { en: "Currency converter", ka: "ვალუტის კონვერტორი" },

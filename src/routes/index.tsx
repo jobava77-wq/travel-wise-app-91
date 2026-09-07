@@ -5,6 +5,7 @@ import { toast } from "sonner";
 import { AppHeader } from "@/components/AppHeader";
 import { Button } from "@/components/ui/button";
 import { TripSheet } from "@/components/TripSheet";
+import { GlobalOverviewCard } from "@/components/GlobalOverviewCard";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
   DropdownMenu,
@@ -84,6 +85,8 @@ function Dashboard() {
             </Button>
           }
         />
+
+        <GlobalOverviewCard />
 
         {loading ? (
           <ul className="space-y-3">
