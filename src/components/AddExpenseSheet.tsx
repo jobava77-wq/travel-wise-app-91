@@ -182,14 +182,14 @@ export function ExpenseSheet({
     >
       {trigger && <DrawerTrigger asChild>{trigger}</DrawerTrigger>}
 
-      <DrawerContent className="mx-auto flex h-[100dvh] max-w-md flex-col overflow-hidden rounded-t-3xl">
+      <DrawerContent className="mx-auto flex h-[100dvh] max-h-[100dvh] max-w-md flex-col overflow-hidden rounded-t-3xl">
         <DrawerHeader className="shrink-0 pb-2 text-center">
           <DrawerTitle className="text-lg font-extrabold">
             {isEdit ? t("editExpense") : t("addExpense")}
           </DrawerTitle>
         </DrawerHeader>
 
-        <div className="flex-1 space-y-5 overflow-y-auto px-5 pb-4">
+        <div className="flex-1 overflow-y-auto px-4 py-2 space-y-4 [-webkit-overflow-scrolling:touch]">
           <div>
             <span className="mb-2 flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
               <Zap className="size-3.5" aria-hidden /> {t("quickAdd")}
@@ -374,7 +374,7 @@ export function ExpenseSheet({
           </div>
         </div>
 
-        <div className="sticky bottom-0 z-50 flex gap-3 border-t bg-background p-4 pb-[max(1rem,env(safe-area-inset-bottom))]">
+        <div className="sticky bottom-0 left-0 right-0 z-50 mt-auto flex shrink-0 gap-3 border-t bg-background p-4 pb-[max(1rem,env(safe-area-inset-bottom))]">
           <Button
             variant="secondary"
             className="h-12 flex-1 rounded-2xl font-bold"
