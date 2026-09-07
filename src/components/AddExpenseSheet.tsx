@@ -28,7 +28,6 @@ import {
 import { cn } from "@/lib/utils";
 import { useI18n } from "@/lib/i18n";
 import {
-  CATEGORIES,
   CURRENCY_SYMBOL,
   formatGel,
   toGel,
@@ -38,6 +37,7 @@ import {
 } from "@/lib/expenses";
 import { labelOf, tagValue, useCustomLists, type QuickActionItem } from "@/lib/customLists";
 import { useRates, type Currency } from "@/lib/rates";
+import { CategoryManager } from "@/components/CategoryManager";
 
 const AMOUNT_RE = /^\d{0,6}([.]\d{0,2})?$/;
 const todayIso = () => new Date().toISOString().slice(0, 10);
@@ -55,7 +55,7 @@ export function ExpenseSheet({
   onOpenChange?: (open: boolean) => void;
 }) {
   const { t } = useI18n();
-  const { addExpense, updateExpense } = useExpenses();
+  const { addExpense, updateExpense, categories } = useExpenses();
   const { rates } = useRates();
   const {
     quickActions,
@@ -98,6 +98,7 @@ export function ExpenseSheet({
   const [geo, setGeo] = useState(expense?.lat != null);
   const [locating, setLocating] = useState(false);
   const [quickManagerOpen, setQuickManagerOpen] = useState(false);
+  const [categoryManagerOpen, setCategoryManagerOpen] = useState(false);
   const [editingQuickId, setEditingQuickId] = useState<string | null>(null);
   const [quickTitle, setQuickTitle] = useState("");
   const [quickCategory, setQuickCategory] = useState<CategoryId>("food");
@@ -303,9 +304,9 @@ export function ExpenseSheet({
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      {CATEGORIES.map((c) => (
+                      {categories.map((c) => (
                         <SelectItem key={c.id} value={c.id}>
-                          {t(c.key)}
+                          {c.key ? t(c.key) : c.name}
                         </SelectItem>
                       ))}
                     </SelectContent>
@@ -321,7 +322,10 @@ export function ExpenseSheet({
                   <div key={q.id} className="flex items-center gap-2 rounded-2xl bg-secondary px-3 py-2">
                     <div className="min-w-0 flex-1">
                       <p className="truncate text-sm font-bold">{labelOf(q, t)}</p>
-                      <p className="text-xs text-muted-foreground">{t(CATEGORIES.find((c) => c.id === q.category)?.key ?? "cat_other")}</p>
+                      <p className="text-xs text-muted-foreground">{(() => {
+                        const quickCategoryOption = categories.find((c) => c.id === q.category);
+                        return quickCategoryOption?.key ? t(quickCategoryOption.key) : quickCategoryOption?.name ?? t("cat_other");
+                      })()}</p>
                     </div>
                     <button
                       type="button"
@@ -423,11 +427,20 @@ export function ExpenseSheet({
           </div>
 
           <div>
-            <span className="mb-2 block text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-              {t("category")}
-            </span>
+            <div className="mb-2 flex items-center justify-between">
+              <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">{t("category")}</span>
+              <button
+                type="button"
+                aria-label={t("manageCategories")}
+                title={t("manageCategories")}
+                onClick={() => setCategoryManagerOpen(true)}
+                className="flex size-7 items-center justify-center rounded-full bg-secondary text-muted-foreground hover:text-foreground"
+              >
+                <Plus className="size-4" aria-hidden />
+              </button>
+            </div>
             <div className="grid grid-cols-4 gap-2">
-              {CATEGORIES.map((c) => {
+              {categories.map((c) => {
                 const Icon = c.icon;
                 const active = category === c.id;
                 return (
@@ -443,7 +456,7 @@ export function ExpenseSheet({
                     )}
                   >
                     <Icon className="size-5" style={{ color: active ? c.color : undefined }} />
-                    <span className="text-center">{t(c.key)}</span>
+                    <span className="text-center">{c.key ? t(c.key) : c.name}</span>
                   </button>
                 );
               })}
@@ -467,6 +480,8 @@ export function ExpenseSheet({
               />
             </div>
           )}
+
+          <CategoryManager open={categoryManagerOpen} onOpenChange={setCategoryManagerOpen} />
 
           <div>
             <label

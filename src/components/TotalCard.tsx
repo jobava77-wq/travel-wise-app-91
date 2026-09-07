@@ -1,11 +1,11 @@
 import { PieChart, Pie, Cell, ResponsiveContainer } from "recharts";
-import { useExpenses, formatGel, categoryById } from "@/lib/expenses";
+import { useExpenses, formatGel } from "@/lib/expenses";
 import { useI18n } from "@/lib/i18n";
 import { Skeleton } from "@/components/ui/skeleton";
 
 export function TotalCard() {
   const { t } = useI18n();
-  const { totalGel, byCategory, loading } = useExpenses();
+  const { totalGel, byCategory, loading, categories } = useExpenses();
   const isEmpty = byCategory.length === 0;
   const data = isEmpty ? [{ id: "empty", value: 1, color: "var(--muted)" }] : byCategory;
 
@@ -68,7 +68,10 @@ export function TotalCard() {
                 style={{ backgroundColor: c.color }}
                 aria-hidden
               />
-              {t(categoryById(c.id).key)}
+              {(() => {
+                const category = categories.find((item) => item.id === c.id);
+                return category?.key ? t(category.key) : category?.name ?? t("cat_other");
+              })()}
               <span className="tabular text-muted-foreground">{formatGel(c.value)}</span>
             </li>
           ))}

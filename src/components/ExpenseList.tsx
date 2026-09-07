@@ -3,9 +3,7 @@ import { Filter, Receipt, X } from "lucide-react";
 import { toast } from "sonner";
 import {
   useExpenses,
-  categoryById,
   formatGel,
-  CATEGORIES,
   CURRENCY_SYMBOL,
   type CategoryId,
   type Expense,
@@ -21,7 +19,7 @@ const parseIso = (iso: string) => {
 
 export function ExpenseList() {
   const { t, lang } = useI18n();
-  const { expenses, removeExpense, loading } = useExpenses();
+  const { expenses, removeExpense, loading, categories } = useExpenses();
   const [categoryFilter, setCategoryFilter] = useState<CategoryId | "all">("all");
   const [editing, setEditing] = useState<Expense | null>(null);
 
@@ -80,7 +78,10 @@ export function ExpenseList() {
               <option value="all">{t("allCategories")}</option>
               {usedCategories.map((id) => (
                 <option key={id} value={id}>
-                  {t(categoryById(id).key)}
+                  {(() => {
+                    const category = categories.find((item) => item.id === id);
+                    return category?.key ? t(category.key) : category?.name ?? t("cat_other");
+                  })()}
                 </option>
               ))}
             </select>
@@ -125,7 +126,9 @@ export function ExpenseList() {
               </div>
               <ul className="ios-card divide-y divide-border overflow-hidden">
                 {group.list.map((e) => {
-                  const cat = categoryById(e.category);
+                  const cat = categories.find((item) => item.id === e.category)
+                    ?? categories.find((item) => item.id === "other")
+                    ?? categories[0]!;
                   const Icon = cat.icon;
                   return (
                     <li key={e.id} className="flex items-center gap-3 px-4 py-3">
@@ -146,7 +149,9 @@ export function ExpenseList() {
                           <p className="truncate text-sm font-bold">
                             {e.category === "other" && e.customCategory
                               ? e.customCategory
-                              : t(cat.key)}
+                              : cat.key
+                                ? t(cat.key)
+                                : cat.name}
                           </p>
                           <p className="truncate text-xs text-muted-foreground">
                             {e.note ||
@@ -198,4 +203,3 @@ export function ExpenseList() {
 }
 
 // re-export so existing imports keep working
-export { CATEGORIES };

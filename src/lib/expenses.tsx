@@ -4,6 +4,8 @@ import {
   Luggage,
   BedDouble,
   UtensilsCrossed,
+  Car,
+  ShoppingBag,
   Wifi,
   Bus,
   MapPin,
@@ -19,32 +21,42 @@ import { CURRENCY_SYMBOL, useRates, type Currency, type Rates } from "./rates";
 export { CURRENCY_SYMBOL, useRates };
 export type { Currency, Rates };
 
-export type CategoryId =
-  | "tickets"
-  | "luggage"
-  | "hotel"
-  | "food"
-  | "internet"
-  | "transport"
-  | "local"
-  | "insurance"
-  | "other";
+export type CategoryId = string;
 
-export const CATEGORIES: {
+export type CategoryOption = {
   id: CategoryId;
-  key: TKey;
+  key?: TKey;
+  name?: string;
   icon: LucideIcon;
+  iconName: string;
   color: string;
-}[] = [
-  { id: "tickets", key: "cat_tickets", icon: Plane, color: "var(--chart-1)" },
-  { id: "luggage", key: "cat_luggage", icon: Luggage, color: "var(--chart-2)" },
-  { id: "hotel", key: "cat_hotel", icon: BedDouble, color: "var(--chart-3)" },
-  { id: "food", key: "cat_food", icon: UtensilsCrossed, color: "var(--chart-4)" },
-  { id: "internet", key: "cat_internet", icon: Wifi, color: "var(--chart-5)" },
-  { id: "transport", key: "cat_transport", icon: Bus, color: "var(--chart-6)" },
-  { id: "local", key: "cat_local", icon: MapPin, color: "var(--chart-7)" },
-  { id: "insurance", key: "cat_insurance", icon: ShieldCheck, color: "var(--chart-2)" },
-  { id: "other", key: "cat_other", icon: Tag, color: "var(--chart-3)" },
+  custom?: boolean;
+};
+
+export const CATEGORY_ICON_MAP: Record<string, LucideIcon> = {
+  Plane,
+  Luggage,
+  BedDouble,
+  UtensilsCrossed,
+  Car,
+  ShoppingBag,
+  Wifi,
+  Bus,
+  MapPin,
+  ShieldCheck,
+  Tag,
+};
+
+export const CATEGORIES: CategoryOption[] = [
+  { id: "tickets", key: "cat_tickets", icon: Plane, iconName: "Plane", color: "var(--chart-1)" },
+  { id: "luggage", key: "cat_luggage", icon: Luggage, iconName: "Luggage", color: "var(--chart-2)" },
+  { id: "hotel", key: "cat_hotel", icon: BedDouble, iconName: "BedDouble", color: "var(--chart-3)" },
+  { id: "food", key: "cat_food", icon: UtensilsCrossed, iconName: "UtensilsCrossed", color: "var(--chart-4)" },
+  { id: "internet", key: "cat_internet", icon: Wifi, iconName: "Wifi", color: "var(--chart-5)" },
+  { id: "transport", key: "cat_transport", icon: Bus, iconName: "Bus", color: "var(--chart-6)" },
+  { id: "local", key: "cat_local", icon: MapPin, iconName: "MapPin", color: "var(--chart-7)" },
+  { id: "insurance", key: "cat_insurance", icon: ShieldCheck, iconName: "ShieldCheck", color: "var(--chart-2)" },
+  { id: "other", key: "cat_other", icon: Tag, iconName: "Tag", color: "var(--chart-3)" },
 ];
 
 /** Quick-tap presets that pre-fill note + category in one tap. */
@@ -60,7 +72,7 @@ export const QUICK_ACTIONS: { key: TKey; category: CategoryId }[] = [
 export const TAGS: TKey[] = ["tag_kids", "tag_family", "tag_work", "tag_fun"];
 
 export const categoryById = (id: CategoryId) =>
-  CATEGORIES.find((c) => c.id === id) ?? CATEGORIES[0]!;
+  CATEGORIES.find((c) => c.id === id) ?? { ...CATEGORIES[0]!, id };
 
 export type Expense = {
   id: string;
@@ -160,6 +172,14 @@ type TripRow = {
   lng?: number | string | null;
 };
 
+type CategoryRow = {
+  id: string;
+  name: string;
+  icon: string;
+  color?: string | null;
+  owner_id: string;
+};
+
 const num = (v: number | string | null | undefined) =>
   v == null || v === "" ? null : (Number(v) as number);
 
@@ -179,7 +199,7 @@ const mapTrip = (r: TripRow): Trip => ({
 const asCurrency = (v: string): Currency => (v === "USD" || v === "EUR" || v === "GEL" ? v : "GEL");
 
 const asCategory = (v: string): CategoryId =>
-  (CATEGORIES.find((c) => c.id === v)?.id ?? "tickets") as CategoryId;
+  v || "tickets";
 
 type Ctx = {
   loading: boolean;
@@ -187,6 +207,10 @@ type Ctx = {
   activeTrip: Trip | null;
   activeTripId: string | null;
   setActiveTripId: (id: string | null) => void;
+  categories: CategoryOption[];
+  addCategory: (name: string, iconName: string, color?: string) => Promise<void>;
+  updateCategory: (id: string, name: string, iconName: string, color?: string) => Promise<void>;
+  removeCategory: (id: string) => Promise<void>;
   addTrip: (t: Omit<Trip, "id" | "createdAt">) => Promise<string>;
   updateTrip: (id: string, patch: Partial<Omit<Trip, "id" | "createdAt">>) => Promise<void>;
   removeTrip: (id: string) => Promise<void>;
@@ -219,6 +243,7 @@ export function ExpensesProvider({ children }: { children: ReactNode }) {
   const { user } = useSession();
   const [rows, setRows] = useState<ExpenseRow[]>([]);
   const [tripRows, setTripRows] = useState<TripRow[]>([]);
+  const [categoryRows, setCategoryRows] = useState<CategoryRow[]>([]);
   const [activeTripId, setActiveTripIdState] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -230,6 +255,7 @@ export function ExpensesProvider({ children }: { children: ReactNode }) {
     if (!user) {
       setRows([]);
       setTripRows([]);
+      setCategoryRows([]);
       setActiveTripIdState(null);
       setLoading(false);
       return;
@@ -237,13 +263,21 @@ export function ExpensesProvider({ children }: { children: ReactNode }) {
     let alive = true;
     setLoading(true);
     (async () => {
-      const { data } = await supabase
+      const [{ data: tripData }, { data: categoryData }] = await Promise.all([
+        supabase
         .from("trips")
         .select("*")
         .eq("owner_id", user.id)
-        .order("created_at", { ascending: false });
+        .order("created_at", { ascending: false }),
+        supabase
+          .from("categories")
+          .select("*")
+          .eq("owner_id", user.id)
+          .order("name"),
+      ]);
       if (!alive) return;
-      setTripRows((data ?? []) as TripRow[]);
+      setTripRows((tripData ?? []) as TripRow[]);
+      setCategoryRows((categoryData ?? []) as CategoryRow[]);
       setLoading(false);
     })();
     return () => {
@@ -316,6 +350,17 @@ export function ExpensesProvider({ children }: { children: ReactNode }) {
 
   const value = useMemo<Ctx>(() => {
     const trips = tripRows.map(mapTrip);
+    const categories: CategoryOption[] = [
+      ...CATEGORIES,
+      ...categoryRows.map((row, index) => ({
+        id: row.id,
+        name: row.name,
+        icon: CATEGORY_ICON_MAP[row.icon] ?? Tag,
+        iconName: row.icon,
+        color: row.color ?? `var(--chart-${(index % 7) + 1})`,
+        custom: true,
+      })),
+    ];
     const expensesAll: Expense[] = rows.map((r) => {
       const currency = asCurrency(r.currency);
       const amount = Number(r.amount) || 0;
@@ -341,7 +386,7 @@ export function ExpensesProvider({ children }: { children: ReactNode }) {
     const sum = (list: Expense[]) =>
       Math.round(list.reduce((s, e) => s + e.amountGel, 0) * 100) / 100;
 
-    const byCategory = CATEGORIES.map((c) => ({
+    const byCategory = categories.map((c) => ({
       id: c.id,
       color: c.color,
       value: sum(tripExpenses.filter((e) => e.category === c.id)),
@@ -353,6 +398,41 @@ export function ExpensesProvider({ children }: { children: ReactNode }) {
       activeTrip,
       activeTripId,
       setActiveTripId: setActiveTripIdState,
+      categories,
+      addCategory: async (name, iconName, color) => {
+        if (!user) throw new Error("No session");
+        const { data, error } = await supabase
+          .from("categories")
+          .insert({
+            id: `category-${Math.random().toString(36).slice(2, 10)}`,
+            name: name.trim(),
+            icon: iconName,
+            color: color ?? null,
+            owner_id: user.id,
+          })
+          .select("*")
+          .single();
+        if (error) throw error;
+        setCategoryRows((prev) => [...prev, data as CategoryRow].sort((a, b) => a.name.localeCompare(b.name)));
+      },
+      updateCategory: async (id, name, iconName, color) => {
+        if (!user) throw new Error("No session");
+        const { data, error } = await supabase
+          .from("categories")
+          .update({ name: name.trim(), icon: iconName, color: color ?? null })
+          .eq("id", id)
+          .eq("owner_id", user.id)
+          .select("*")
+          .single();
+        if (error) throw error;
+        setCategoryRows((prev) => prev.map((row) => (row.id === id ? (data as CategoryRow) : row)).sort((a, b) => a.name.localeCompare(b.name)));
+      },
+      removeCategory: async (id) => {
+        if (!user) throw new Error("No session");
+        const { error } = await supabase.from("categories").delete().eq("id", id).eq("owner_id", user.id);
+        if (error) throw error;
+        setCategoryRows((prev) => prev.filter((row) => row.id !== id));
+      },
       addTrip: async (t) => {
         if (!user) throw new Error("No session");
         const id = `${slugify(t.name)}-${Math.random().toString(36).slice(2, 6)}`;
@@ -465,7 +545,7 @@ export function ExpensesProvider({ children }: { children: ReactNode }) {
         if (error) throw error;
       },
     };
-  }, [rows, tripRows, activeTripId, loading, rates, user]);
+  }, [rows, tripRows, categoryRows, activeTripId, loading, rates, user]);
 
   return <ExpensesContext.Provider value={value}>{children}</ExpensesContext.Provider>;
 }
