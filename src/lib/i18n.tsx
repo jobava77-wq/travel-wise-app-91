@@ -202,6 +202,7 @@ const dict = {
   signOut: { en: "Sign Out", ka: "გამოსვლა" },
   authFailed: { en: "Authentication failed. Check your details and try again.", ka: "ავტორიზაცია ვერ შესრულდა. შეამოწმეთ მონაცემები და სცადეთ თავიდან." },
   accountCreated: { en: "Account created successfully.", ka: "ანგარიში წარმატებით შეიქმნა." },
+  authLoading: { en: "Completing sign in…", ka: "შესვლა სრულდება…" },
 } as const;
 
 export type TKey = keyof typeof dict;
