@@ -214,7 +214,7 @@ const todayIso = () => new Date().toISOString().slice(0, 10);
 
 export function ExpensesProvider({ children }: { children: ReactNode }) {
   const { rates } = useRates();
-  const { user, username } = useSession();
+  const { user } = useSession();
   const [rows, setRows] = useState<ExpenseRow[]>([]);
   const [tripRows, setTripRows] = useState<TripRow[]>([]);
   const [activeTripId, setActiveTripIdState] = useState<string | null>(null);
@@ -360,12 +360,7 @@ export function ExpensesProvider({ children }: { children: ReactNode }) {
             name: t.name,
             start_date: t.startDate,
             end_date: t.endDate,
-            budget_gel: t.budgetGel ?? null,
-            location_name: t.locationName || null,
-            lat: t.lat,
-            lng: t.lng,
             owner_id: user.id,
-            owner_name: username ?? "",
           })
           .select("*")
           .single();
@@ -482,7 +477,7 @@ export function ExpensesProvider({ children }: { children: ReactNode }) {
         if (error) throw error;
       },
     };
-  }, [rows, tripRows, activeTripId, loading, rates, user, username]);
+  }, [rows, tripRows, activeTripId, loading, rates, user]);
 
   return <ExpensesContext.Provider value={value}>{children}</ExpensesContext.Provider>;
 }
