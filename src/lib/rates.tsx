@@ -1,16 +1,13 @@
 import { createContext, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
+import { useServerFn } from "@tanstack/react-start";
 import { useSession } from "@/lib/session";
+import { fetchNbgRates } from "./rates.functions";
 
 export type Currency = "GEL" | "USD" | "EUR";
 
 export type Rates = Record<Currency, number>;
 
-/** Fallback exchange rates -> GEL (used until the user overrides them) */
-export const DEFAULT_RATES: Rates = {
-  GEL: 1,
-  USD: 2.7,
-  EUR: 2.95,
-};
+const EMPTY_RATES: Rates = { GEL: 1, USD: 0, EUR: 0 };
 
 export const CURRENCY_SYMBOL: Record<Currency, string> = {
   GEL: "₾",
@@ -30,7 +27,7 @@ type Ctx = {
 };
 
 const RatesContext = createContext<Ctx>({
-  rates: DEFAULT_RATES,
+  rates: EMPTY_RATES,
   updatedAt: null,
   setRate: () => {},
   resetRates: () => {},
@@ -38,14 +35,15 @@ const RatesContext = createContext<Ctx>({
 
 export function RatesProvider({ children }: { children: ReactNode }) {
   const { user } = useSession();
+  const fetchLiveRates = useServerFn(fetchNbgRates);
   const storageKey = user ? `${RATES_KEY}:${user.id}` : null;
   const updatedKey = user ? `${RATES_UPDATED_KEY}:${user.id}` : null;
-  const [rates, setRates] = useState<Rates>(DEFAULT_RATES);
+  const [rates, setRates] = useState<Rates>(EMPTY_RATES);
   const [updatedAt, setUpdatedAt] = useState<string | null>(null);
   const [hydrated, setHydrated] = useState(false);
 
   useEffect(() => {
-    setRates(DEFAULT_RATES);
+    setRates(EMPTY_RATES);
     setUpdatedAt(null);
     if (!storageKey || !updatedKey) {
       setHydrated(true);
@@ -58,8 +56,8 @@ export function RatesProvider({ children }: { children: ReactNode }) {
         const saved = JSON.parse(raw) as Partial<Rates>;
         setRates({
           GEL: 1,
-          USD: Number(saved.USD) > 0 ? Number(saved.USD) : DEFAULT_RATES.USD,
-          EUR: Number(saved.EUR) > 0 ? Number(saved.EUR) : DEFAULT_RATES.EUR,
+          USD: Number(saved.USD) > 0 ? Number(saved.USD) : 0,
+          EUR: Number(saved.EUR) > 0 ? Number(saved.EUR) : 0,
         });
       }
       setUpdatedAt(window.localStorage.getItem(updatedKey));
@@ -68,6 +66,21 @@ export function RatesProvider({ children }: { children: ReactNode }) {
     }
     setHydrated(true);
   }, [storageKey, updatedKey]);
+
+  useEffect(() => {
+    if (!user) return;
+    let alive = true;
+    void fetchLiveRates()
+      .then((live) => {
+        if (alive) setRates((prev) => ({ ...prev, ...live }));
+      })
+      .catch(() => {
+        // Keep user-saved rates when the official source is unavailable.
+      });
+    return () => {
+      alive = false;
+    };
+  }, [fetchLiveRates, user]);
 
   useEffect(() => {
     if (!hydrated) return;
@@ -88,11 +101,11 @@ export function RatesProvider({ children }: { children: ReactNode }) {
       rates,
       updatedAt,
       setRate: (currency, v) => {
-        setRates((prev) => ({ ...prev, [currency]: v > 0 ? v : DEFAULT_RATES[currency] }));
+        if (v > 0) setRates((prev) => ({ ...prev, [currency]: v }));
         touch();
       },
       resetRates: () => {
-        setRates(DEFAULT_RATES);
+        setRates(EMPTY_RATES);
         setUpdatedAt(null);
       },
     }),

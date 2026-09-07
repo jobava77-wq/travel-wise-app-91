@@ -97,6 +97,7 @@ const dict = {
   budgetProgress: { en: "Budget", ka: "ბიუჯეტი" },
   overBudget: { en: "Over budget", ka: "ბიუჯეტი გადამეტებულია" },
   budgetLeft: { en: "left", ka: "დარჩა" },
+  budgetNotSet: { en: "No planned budget", ka: "დაგეგმილი ბიუჯეტი არ არის" },
   dailyAvg: { en: "Daily average", ka: "დღიური საშუალო" },
   daysLeft: { en: "days left", ka: "დღე დარჩა" },
   allCategories: { en: "All categories", ka: "ყველა კატეგორია" },

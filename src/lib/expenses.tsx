@@ -14,9 +14,9 @@ import {
 import { supabase } from "@/integrations/supabase/client";
 import { useSession } from "@/lib/session";
 import type { TKey, Lang } from "./i18n";
-import { CURRENCY_SYMBOL, DEFAULT_RATES, useRates, type Currency, type Rates } from "./rates";
+import { CURRENCY_SYMBOL, useRates, type Currency, type Rates } from "./rates";
 
-export { CURRENCY_SYMBOL, DEFAULT_RATES, useRates };
+export { CURRENCY_SYMBOL, useRates };
 export type { Currency, Rates };
 
 export type CategoryId =
@@ -100,14 +100,15 @@ export type Trip = {
   endDate: string;
   /** optional planned spend in GEL */
   budgetGel: number | null;
+  budget: number | null;
   locationName: string;
   lat: number | null;
   lng: number | null;
   createdAt: number;
 };
 
-export const toGel = (amount: number, currency: Currency, rates: Rates = DEFAULT_RATES) =>
-  Math.round(amount * (rates[currency] || 1) * 100) / 100;
+export const toGel = (amount: number, currency: Currency, rates: Rates) =>
+  rates[currency] > 0 ? Math.round(amount * rates[currency] * 100) / 100 : 0;
 
 export const formatGel = (value: number) =>
   `${value.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ₾`;
@@ -168,6 +169,7 @@ const mapTrip = (r: TripRow): Trip => ({
   startDate: r.start_date,
   endDate: r.end_date,
   budgetGel: r.budget_gel == null ? null : Number(r.budget_gel) || null,
+  budget: r.budget_gel == null ? null : Number(r.budget_gel) || null,
   locationName: r.location_name ?? "",
   lat: num(r.lat),
   lng: num(r.lng),
@@ -361,6 +363,7 @@ export function ExpensesProvider({ children }: { children: ReactNode }) {
             name: t.name,
             start_date: t.startDate,
             end_date: t.endDate,
+            budget_gel: t.budgetGel ?? null,
             owner_id: user.id,
           })
           .select("*")

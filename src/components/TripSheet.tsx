@@ -105,6 +105,7 @@ export function TripSheet({
       startDate: start,
       endDate: end,
       budgetGel: budgetNum,
+      budget: budgetNum,
       locationName: locationName.trim(),
       lat,
       lng,
