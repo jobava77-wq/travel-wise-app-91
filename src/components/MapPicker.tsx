@@ -91,6 +91,7 @@ function LocationSearch({ onPick }: { onPick: (lat: number, lng: number) => void
   const [loading, setLoading] = useState(false);
   const [hasSearched, setHasSearched] = useState(false);
   const [searchFailed, setSearchFailed] = useState(false);
+  const inputRef = useRef<HTMLInputElement>(null);
   const selectedQuery = useRef<string | null>(null);
 
   const selectResult = (result: NominatimResult) => {
@@ -177,6 +178,14 @@ function LocationSearch({ onPick }: { onPick: (lat: number, lng: number) => void
     };
   }, [query, lang]);
 
+  useEffect(() => {
+    if (results.length === 0 && !(hasSearched && query.trim().length >= 3)) return;
+    const frame = window.requestAnimationFrame(() => {
+      inputRef.current?.scrollIntoView({ behavior: "smooth", block: "nearest" });
+    });
+    return () => window.cancelAnimationFrame(frame);
+  }, [hasSearched, query, results.length]);
+
   const submitSearch = (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     runSearch(query);
@@ -184,12 +193,13 @@ function LocationSearch({ onPick }: { onPick: (lat: number, lng: number) => void
 
   return (
     <div
-      className="sticky top-0 z-30 bg-background/95 py-2 backdrop-blur"
+      className="sticky top-0 z-50 bg-background/95 py-2 backdrop-blur"
       onClick={(event) => event.stopPropagation()}
     >
       <form onSubmit={submitSearch} className="relative">
         <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" aria-hidden />
         <Input
+          ref={inputRef}
           value={query}
           onChange={(event) => setQuery(event.target.value)}
           onKeyDown={(event) => {
@@ -199,9 +209,8 @@ function LocationSearch({ onPick }: { onPick: (lat: number, lng: number) => void
             }
           }}
           onFocus={(event) => {
-            const input = event.currentTarget;
             window.requestAnimationFrame(() => {
-              input.scrollIntoView({ behavior: "smooth", block: "nearest" });
+              inputRef.current?.scrollIntoView({ behavior: "smooth", block: "nearest" });
             });
           }}
           placeholder={t("searchLocationPlaceholder")}
@@ -227,7 +236,7 @@ function LocationSearch({ onPick }: { onPick: (lat: number, lng: number) => void
       </form>
 
       {(results.length > 0 || (hasSearched && query.trim().length >= 3)) && (
-        <div className="absolute left-0 right-0 top-full z-40 max-h-48 overflow-y-auto rounded-2xl border bg-card shadow-lg">
+        <div className="absolute left-0 right-0 top-full z-50 max-h-48 overflow-y-auto rounded-2xl border bg-card shadow-lg">
           {results.length > 0 ? results.map((result) => (
             <button
               key={result.place_id}
