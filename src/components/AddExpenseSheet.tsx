@@ -1,5 +1,5 @@
 import { useState, type ReactNode } from "react";
-import { Loader2, Plus, Zap } from "lucide-react";
+import { Loader2, Pencil, Plus, Trash2, X, Zap } from "lucide-react";
 import { toast } from "sonner";
 import {
   Drawer,
@@ -8,6 +8,13 @@ import {
   DrawerTitle,
   DrawerTrigger,
 } from "@/components/ui/drawer";
+import {
+  Dialog,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
@@ -23,14 +30,13 @@ import { useI18n } from "@/lib/i18n";
 import {
   CATEGORIES,
   CURRENCY_SYMBOL,
-  QUICK_ACTIONS,
-  TAGS,
   formatGel,
   toGel,
   useExpenses,
   type CategoryId,
   type Expense,
 } from "@/lib/expenses";
+import { labelOf, tagValue, useCustomLists, type QuickActionItem } from "@/lib/customLists";
 import { useRates, type Currency } from "@/lib/rates";
 
 const AMOUNT_RE = /^\d{0,6}([.]\d{0,2})?$/;
@@ -51,6 +57,15 @@ export function ExpenseSheet({
   const { t } = useI18n();
   const { addExpense, updateExpense } = useExpenses();
   const { rates } = useRates();
+  const {
+    quickActions,
+    tags: availableTags,
+    addQuickAction,
+    updateQuickAction,
+    removeQuickAction,
+    addTag,
+    removeTag,
+  } = useCustomLists();
   const isEdit = expense != null;
 
   const [internalOpen, setInternalOpen] = useState(false);
@@ -82,6 +97,12 @@ export function ExpenseSheet({
   const [tags, setTags] = useState<string[]>(expense?.tags ?? []);
   const [geo, setGeo] = useState(expense?.lat != null);
   const [locating, setLocating] = useState(false);
+  const [quickManagerOpen, setQuickManagerOpen] = useState(false);
+  const [editingQuickId, setEditingQuickId] = useState<string | null>(null);
+  const [quickTitle, setQuickTitle] = useState("");
+  const [quickCategory, setQuickCategory] = useState<CategoryId>("food");
+  const [tagInputOpen, setTagInputOpen] = useState(false);
+  const [tagInput, setTagInput] = useState("");
   const [coords, setCoords] = useState<{ lat: number; lng: number } | null>(
     expense?.lat != null && expense?.lng != null ? { lat: expense.lat, lng: expense.lng } : null,
   );
@@ -101,6 +122,39 @@ export function ExpenseSheet({
 
   const toggleTag = (tag: string) =>
     setTags((prev) => (prev.includes(tag) ? prev.filter((x) => x !== tag) : [...prev, tag]));
+
+  const startNewQuickAction = () => {
+    setEditingQuickId(null);
+    setQuickTitle("");
+    setQuickCategory("food");
+  };
+
+  const startEditingQuickAction = (item: QuickActionItem) => {
+    setEditingQuickId(item.id);
+    setQuickTitle(labelOf(item, t));
+    setQuickCategory(item.category);
+  };
+
+  const saveQuickAction = () => {
+    const title = quickTitle.trim();
+    if (!title) return;
+    if (editingQuickId) {
+      updateQuickAction(editingQuickId, title, quickCategory);
+    } else {
+      addQuickAction(title, quickCategory);
+    }
+    startNewQuickAction();
+  };
+
+  const addCustomTag = () => {
+    const label = tagInput.trim();
+    if (!label || availableTags.some((tag) => labelOf(tag, t).toLocaleLowerCase() === label.toLocaleLowerCase())) {
+      return;
+    }
+    addTag(label);
+    setTagInput("");
+    setTagInputOpen(false);
+  };
 
   const toggleGeo = (on: boolean) => {
     setGeo(on);
@@ -195,20 +249,110 @@ export function ExpenseSheet({
               <Zap className="size-3.5" aria-hidden /> {t("quickAdd")}
             </span>
             <div className="-mx-5 flex gap-2 overflow-x-auto px-5 pb-1">
-              {QUICK_ACTIONS.map((q) => (
+              {quickActions.map((q) => (
                 <button
-                  key={q.key}
+                  key={q.id}
                   onClick={() => {
-                    setNote(t(q.key));
+                    setNote(labelOf(q, t));
                     setCategory(q.category);
                   }}
                   className="shrink-0 rounded-full bg-secondary px-3.5 py-2 text-xs font-bold text-foreground transition-transform active:scale-95"
                 >
-                  {t(q.key)}
+                  {labelOf(q, t)}
                 </button>
               ))}
+              <button
+                type="button"
+                onClick={() => {
+                  startNewQuickAction();
+                  setQuickManagerOpen(true);
+                }}
+                className="flex shrink-0 items-center gap-1 rounded-full bg-secondary px-3.5 py-2 text-xs font-bold text-foreground transition-transform active:scale-95"
+              >
+                <Plus className="size-3.5" aria-hidden />
+                {t("manageQuick")}
+              </button>
             </div>
           </div>
+
+          <Dialog open={quickManagerOpen} onOpenChange={setQuickManagerOpen}>
+            <DialogContent className="max-h-[85dvh] overflow-y-auto rounded-3xl sm:max-w-md">
+              <DialogHeader>
+                <DialogTitle>{t("manageQuick")}</DialogTitle>
+              </DialogHeader>
+
+              <div className="space-y-3">
+                <div className="grid gap-2">
+                  <label htmlFor="quickTitle" className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                    {t("quickTitle")}
+                  </label>
+                  <Input
+                    id="quickTitle"
+                    value={quickTitle}
+                    onChange={(e) => setQuickTitle(e.target.value.slice(0, 40))}
+                    placeholder={t("quickTitle")}
+                    className="h-11 rounded-2xl bg-secondary"
+                  />
+                </div>
+                <div className="grid gap-2">
+                  <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                    {t("category")}
+                  </span>
+                  <Select value={quickCategory} onValueChange={(value) => setQuickCategory(value as CategoryId)}>
+                    <SelectTrigger className="h-11 rounded-2xl border-0 bg-secondary font-semibold">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {CATEGORIES.map((c) => (
+                        <SelectItem key={c.id} value={c.id}>
+                          {t(c.key)}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <Button className="h-11 w-full rounded-2xl font-bold" onClick={saveQuickAction} disabled={!quickTitle.trim()}>
+                  {editingQuickId ? t("editList") : t("addItem")}
+                </Button>
+              </div>
+
+              <div className="space-y-2 border-t pt-3">
+                {quickActions.map((q) => (
+                  <div key={q.id} className="flex items-center gap-2 rounded-2xl bg-secondary px-3 py-2">
+                    <div className="min-w-0 flex-1">
+                      <p className="truncate text-sm font-bold">{labelOf(q, t)}</p>
+                      <p className="text-xs text-muted-foreground">{t(CATEGORIES.find((c) => c.id === q.category)?.key ?? "cat_other")}</p>
+                    </div>
+                    <button
+                      type="button"
+                      aria-label={`${t("editList")}: ${labelOf(q, t)}`}
+                      onClick={() => startEditingQuickAction(q)}
+                      className="rounded-full p-2 text-muted-foreground hover:bg-background hover:text-foreground"
+                    >
+                      <Pencil className="size-4" aria-hidden />
+                    </button>
+                    <button
+                      type="button"
+                      aria-label={`${t("deleteBtn")}: ${labelOf(q, t)}`}
+                      onClick={() => {
+                        removeQuickAction(q.id);
+                        if (editingQuickId === q.id) startNewQuickAction();
+                      }}
+                      className="rounded-full p-2 text-muted-foreground hover:bg-background hover:text-destructive"
+                    >
+                      <Trash2 className="size-4" aria-hidden />
+                    </button>
+                  </div>
+                ))}
+              </div>
+
+              <DialogFooter>
+                <Button variant="secondary" className="h-11 rounded-2xl font-bold" onClick={() => setQuickManagerOpen(false)}>
+                  {t("doneEditing")}
+                </Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
 
           <div className="flex gap-3">
             <div className="flex-1">
@@ -344,24 +488,69 @@ export function ExpenseSheet({
               {t("tags")}
             </span>
             <div className="flex flex-wrap gap-2">
-              {TAGS.map((tag) => {
-                const active = tags.includes(tag);
+              {availableTags.map((tag) => {
+                const value = tagValue(tag);
+                const active = tags.includes(value);
                 return (
-                  <button
-                    key={tag}
-                    onClick={() => toggleTag(tag)}
-                    aria-pressed={active}
+                  <div
+                    key={tag.id}
                     className={cn(
-                      "rounded-full px-3.5 py-2 text-xs font-bold transition-all",
-                      active
-                        ? "bg-primary text-primary-foreground"
-                        : "bg-secondary text-muted-foreground",
+                      "flex items-center rounded-full text-xs font-bold transition-all",
+                      active ? "bg-primary text-primary-foreground" : "bg-secondary text-muted-foreground",
                     )}
                   >
-                    {t(tag)}
-                  </button>
+                    <button
+                      type="button"
+                      onClick={() => toggleTag(value)}
+                      aria-pressed={active}
+                      className="rounded-l-full px-3.5 py-2"
+                    >
+                      {labelOf(tag, t)}
+                    </button>
+                    <button
+                      type="button"
+                      aria-label={`${t("deleteBtn")}: ${labelOf(tag, t)}`}
+                      onClick={() => removeTag(tag.id)}
+                      className="rounded-r-full px-2 py-2 opacity-70 transition-opacity hover:opacity-100"
+                    >
+                      <X className="size-3.5" aria-hidden />
+                    </button>
+                  </div>
                 );
               })}
+              {tagInputOpen ? (
+                <div className="flex items-center gap-1.5 rounded-full bg-secondary p-1 pl-3">
+                  <Input
+                    value={tagInput}
+                    onChange={(e) => setTagInput(e.target.value.slice(0, 30))}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") {
+                        e.preventDefault();
+                        addCustomTag();
+                      }
+                    }}
+                    placeholder={t("newTag")}
+                    className="h-8 w-24 border-0 bg-transparent p-0 text-xs font-semibold shadow-none focus-visible:ring-0"
+                  />
+                  <button
+                    type="button"
+                    aria-label={t("addItem")}
+                    onClick={addCustomTag}
+                    className="rounded-full bg-primary p-2 text-primary-foreground"
+                  >
+                    <Plus className="size-3.5" aria-hidden />
+                  </button>
+                </div>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => setTagInputOpen(true)}
+                  className="flex items-center gap-1 rounded-full bg-secondary px-3.5 py-2 text-xs font-bold text-muted-foreground transition-transform active:scale-95"
+                >
+                  <Plus className="size-3.5" aria-hidden />
+                  {t("addItem")}
+                </button>
+              )}
             </div>
           </div>
 
