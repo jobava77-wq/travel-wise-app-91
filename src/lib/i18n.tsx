@@ -160,6 +160,9 @@ const dict = {
   locationDenied: { en: "Location unavailable", ka: "ადგილმდებარეობა მიუწვდომელია" },
   tripLocation: { en: "Where are you going?", ka: "სად მიემგზავრებით?" },
   mapHint: { en: "Tap the map to drop a pin.", ka: "შეეხეთ რუკას ნიშნულის დასმისთვის." },
+  searchLocation: { en: "Search location", ka: "მდებარეობის ძიება" },
+  searchLocationPlaceholder: { en: "Search location...", ka: "აირჩიეთ მდებარეობა..." },
+  clearSearch: { en: "Clear search", ka: "ძიების გასუფთავება" },
   listView: { en: "List", ka: "სია" },
   mapView: { en: "Map", ka: "რუკა" },
   noGeoExpenses: {
