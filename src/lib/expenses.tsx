@@ -422,7 +422,7 @@ export function ExpensesProvider({ children }: { children: ReactNode }) {
       tripTotal: (tripId) => sum(expensesAll.filter((e) => e.tripId === tripId)),
       tripCount: (tripId) => expensesAll.filter((e) => e.tripId === tripId).length,
       addExpense: async (e) => {
-        if (!activeTripId) return;
+        if (!activeTripId || !user) throw new Error("No session or active trip");
         const { data, error } = await supabase
           .from("expenses")
           .insert({
@@ -432,11 +432,6 @@ export function ExpensesProvider({ children }: { children: ReactNode }) {
             amount: e.amount,
             currency: e.currency,
             category: e.category,
-            custom_category: e.customCategory || null,
-            spent_at: e.spentAt ?? todayIso(),
-            tags: e.tags ?? [],
-            lat: e.lat ?? null,
-            lng: e.lng ?? null,
           })
           .select("*")
           .single();
@@ -452,11 +447,6 @@ export function ExpensesProvider({ children }: { children: ReactNode }) {
             amount: patch.amount,
             currency: patch.currency,
             category: patch.category,
-            custom_category: patch.customCategory || null,
-            spent_at: patch.spentAt ?? todayIso(),
-            tags: patch.tags ?? [],
-            lat: patch.lat ?? null,
-            lng: patch.lng ?? null,
           })
           .eq("id", id)
           .select("*")
