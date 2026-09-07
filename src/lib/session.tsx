@@ -33,8 +33,12 @@ export function SessionProvider({ children }: { children: ReactNode }) {
       setUser(data.session?.user ?? null);
       setReady(true);
     });
-    const { data } = supabase.auth.onAuthStateChange((_event, session) => {
-      setUser(session?.user ?? null);
+    const { data } = supabase.auth.onAuthStateChange((event, session) => {
+      if (event === "SIGNED_IN" || session?.user) {
+        setUser(session.user);
+      } else if (event === "SIGNED_OUT") {
+        setUser(null);
+      }
       setReady(true);
     });
     return () => {
@@ -59,7 +63,7 @@ export function SessionProvider({ children }: { children: ReactNode }) {
       signInWithGoogle: async () => {
         const { error } = await supabase.auth.signInWithOAuth({
           provider: "google",
-          options: { redirectTo: `${window.location.origin}/auth/callback` },
+          options: { redirectTo: window.location.origin },
         });
         return { error: error?.message ?? null };
       },
