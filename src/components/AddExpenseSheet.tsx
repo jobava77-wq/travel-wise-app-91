@@ -224,7 +224,6 @@ export function ExpenseSheet({
                 </span>
                 <Input
                   id="amount"
-                  autoFocus
                   inputMode="decimal"
                   placeholder="0.00"
                   value={amount}
