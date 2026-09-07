@@ -132,6 +132,7 @@ export function formatTripPeriod(trip: Trip, lang: Lang = "en") {
 type ExpenseRow = {
   id: string;
   trip_id: string;
+  owner_id?: string | null;
   title: string | null;
   amount: number | string;
   currency: string;
@@ -151,7 +152,7 @@ type TripRow = {
   end_date: string;
   created_at: string;
   budget_gel?: number | string | null;
-  owner_pin?: string;
+  owner_id?: string | null;
   owner_name?: string;
   location_name?: string | null;
   lat?: number | string | null;
@@ -213,7 +214,7 @@ const todayIso = () => new Date().toISOString().slice(0, 10);
 
 export function ExpensesProvider({ children }: { children: ReactNode }) {
   const { rates } = useRates();
-  const { pin, username } = useSession();
+  const { user, username } = useSession();
   const [rows, setRows] = useState<ExpenseRow[]>([]);
   const [tripRows, setTripRows] = useState<TripRow[]>([]);
   const [activeTripId, setActiveTripIdState] = useState<string | null>(null);
@@ -224,7 +225,7 @@ export function ExpensesProvider({ children }: { children: ReactNode }) {
 
   // fetch the trips owned by the current user
   useEffect(() => {
-    if (!pin) {
+    if (!user) {
       setRows([]);
       setTripRows([]);
       setActiveTripIdState(null);
@@ -237,7 +238,7 @@ export function ExpensesProvider({ children }: { children: ReactNode }) {
       const { data } = await supabase
         .from("trips")
         .select("*")
-        .eq("owner_pin", pin)
+        .eq("owner_id", user.id)
         .order("created_at", { ascending: false });
       if (!alive) return;
       setTripRows((data ?? []) as TripRow[]);
@@ -246,11 +247,11 @@ export function ExpensesProvider({ children }: { children: ReactNode }) {
     return () => {
       alive = false;
     };
-  }, [pin]);
+  }, [user]);
 
   // fetch the expenses of those trips
   useEffect(() => {
-    if (!pin || tripIds.length === 0) {
+    if (!user || tripIds.length === 0) {
       setRows([]);
       return;
     }
@@ -268,13 +269,13 @@ export function ExpensesProvider({ children }: { children: ReactNode }) {
       alive = false;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [pin, tripIdsKey]);
+  }, [user, tripIdsKey]);
 
   // realtime sync, scoped to the user's trips
   useEffect(() => {
-    if (!pin) return;
+    if (!user) return;
     const channel = supabase
-      .channel(`voyage-sync-${pin}`)
+      .channel(`voyage-sync-${user.id}`)
       .on("postgres_changes", { event: "*", schema: "public", table: "expenses" }, (payload) => {
         setRows((prev) => {
           if (payload.eventType === "DELETE") {
@@ -289,7 +290,7 @@ export function ExpensesProvider({ children }: { children: ReactNode }) {
       })
       .on(
         "postgres_changes",
-        { event: "*", schema: "public", table: "trips", filter: `owner_pin=eq.${pin}` },
+        { event: "*", schema: "public", table: "trips", filter: `owner_id=eq.${user.id}` },
         (payload) => {
           setTripRows((prev) => {
             if (payload.eventType === "DELETE") {
@@ -308,7 +309,7 @@ export function ExpensesProvider({ children }: { children: ReactNode }) {
       void supabase.removeChannel(channel);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [pin, tripIdsKey]);
+  }, [user, tripIdsKey]);
 
   const value = useMemo<Ctx>(() => {
     const trips = tripRows.map(mapTrip);
@@ -350,7 +351,7 @@ export function ExpensesProvider({ children }: { children: ReactNode }) {
       activeTripId,
       setActiveTripId: setActiveTripIdState,
       addTrip: async (t) => {
-        if (!pin) throw new Error("No session");
+        if (!user) throw new Error("No session");
         const id = `${slugify(t.name)}-${Math.random().toString(36).slice(2, 6)}`;
         const { data, error } = await supabase
           .from("trips")
@@ -363,7 +364,7 @@ export function ExpensesProvider({ children }: { children: ReactNode }) {
             location_name: t.locationName || null,
             lat: t.lat,
             lng: t.lng,
-            owner_pin: pin,
+            owner_id: user.id,
             owner_name: username ?? "",
           })
           .select("*")
@@ -374,7 +375,7 @@ export function ExpensesProvider({ children }: { children: ReactNode }) {
         return row.id;
       },
       updateTrip: async (id, patch) => {
-        if (!pin) return;
+        if (!user) return;
         const payload: {
           name?: string;
           start_date?: string;
@@ -395,7 +396,7 @@ export function ExpensesProvider({ children }: { children: ReactNode }) {
           .from("trips")
           .update(payload)
           .eq("id", id)
-          .eq("owner_pin", pin)
+          .eq("owner_id", user.id)
           .select("*")
           .single();
         if (error) throw error;
@@ -403,7 +404,7 @@ export function ExpensesProvider({ children }: { children: ReactNode }) {
         setTripRows((prev) => prev.map((r) => (r.id === row.id ? row : r)));
       },
       removeTrip: async (id) => {
-        if (!pin) return;
+        if (!user) return;
         const { error: expensesError } = await supabase
           .from("expenses")
           .delete()
@@ -413,7 +414,7 @@ export function ExpensesProvider({ children }: { children: ReactNode }) {
           .from("trips")
           .delete()
           .eq("id", id)
-          .eq("owner_pin", pin);
+          .eq("owner_id", user.id);
         if (error) throw error;
         setTripRows((prev) => prev.filter((r) => r.id !== id));
         setRows((prev) => prev.filter((r) => r.trip_id !== id));
@@ -431,6 +432,7 @@ export function ExpensesProvider({ children }: { children: ReactNode }) {
           .from("expenses")
           .insert({
             trip_id: activeTripId,
+            owner_id: user.id,
             title: e.note ?? "",
             amount: e.amount,
             currency: e.currency,
@@ -480,7 +482,7 @@ export function ExpensesProvider({ children }: { children: ReactNode }) {
         if (error) throw error;
       },
     };
-  }, [rows, tripRows, activeTripId, loading, rates, pin, username]);
+  }, [rows, tripRows, activeTripId, loading, rates, user, username]);
 
   return <ExpensesContext.Provider value={value}>{children}</ExpensesContext.Provider>;
 }

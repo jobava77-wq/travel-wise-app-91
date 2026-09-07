@@ -1,62 +1,73 @@
 import { createContext, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
-
-const USER_KEY = "voyageUsername";
-const PIN_KEY = "voyagePin";
-
-export const isValidPin = (v: string) => /^\d{5}$/.test(v);
-
-type Session = { username: string; pin: string };
+import type { User } from "@supabase/supabase-js";
+import { supabase } from "@/integrations/supabase/client";
 
 type Ctx = {
   ready: boolean;
+  user: User | null;
   username: string | null;
-  pin: string | null;
-  signIn: (s: Session) => void;
-  signOut: () => void;
+  signIn: (email: string, password: string) => Promise<{ error: string | null }>;
+  signUp: (email: string, password: string) => Promise<{ error: string | null; needsConfirmation: boolean }>;
+  signInWithGoogle: () => Promise<{ error: string | null }>;
+  signOut: () => Promise<void>;
 };
 
 const SessionContext = createContext<Ctx>({
   ready: false,
+  user: null,
   username: null,
-  pin: null,
-  signIn: () => {},
-  signOut: () => {},
+  signIn: async () => ({ error: null }),
+  signUp: async () => ({ error: null, needsConfirmation: false }),
+  signInWithGoogle: async () => ({ error: null }),
+  signOut: async () => {},
 });
 
 export function SessionProvider({ children }: { children: ReactNode }) {
   const [ready, setReady] = useState(false);
-  const [username, setUsername] = useState<string | null>(null);
-  const [pin, setPin] = useState<string | null>(null);
+  const [user, setUser] = useState<User | null>(null);
 
   useEffect(() => {
-    const u = window.localStorage.getItem(USER_KEY);
-    const p = window.localStorage.getItem(PIN_KEY);
-    if (u && p && isValidPin(p)) {
-      setUsername(u);
-      setPin(p);
-    }
-    setReady(true);
+    let mounted = true;
+    void supabase.auth.getSession().then(({ data }) => {
+      if (!mounted) return;
+      setUser(data.session?.user ?? null);
+      setReady(true);
+    });
+    const { data } = supabase.auth.onAuthStateChange((_event, session) => {
+      setUser(session?.user ?? null);
+      setReady(true);
+    });
+    return () => {
+      mounted = false;
+      data.subscription.unsubscribe();
+    };
   }, []);
 
   const value = useMemo<Ctx>(
     () => ({
       ready,
-      username,
-      pin,
-      signIn: ({ username: u, pin: p }) => {
-        window.localStorage.setItem(USER_KEY, u);
-        window.localStorage.setItem(PIN_KEY, p);
-        setUsername(u);
-        setPin(p);
+      user,
+      username: user?.user_metadata?.full_name ?? user?.email ?? null,
+      signIn: async (email, password) => {
+        const { error } = await supabase.auth.signInWithPassword({ email, password });
+        return { error: error?.message ?? null };
       },
-      signOut: () => {
-        window.localStorage.removeItem(USER_KEY);
-        window.localStorage.removeItem(PIN_KEY);
-        setUsername(null);
-        setPin(null);
+      signUp: async (email, password) => {
+        const { data, error } = await supabase.auth.signUp({ email, password });
+        return { error: error?.message ?? null, needsConfirmation: !data.session };
+      },
+      signInWithGoogle: async () => {
+        const { error } = await supabase.auth.signInWithOAuth({
+          provider: "google",
+          options: { redirectTo: window.location.origin },
+        });
+        return { error: error?.message ?? null };
+      },
+      signOut: async () => {
+        await supabase.auth.signOut();
       },
     }),
-    [ready, username, pin],
+    [ready, user],
   );
 
   return <SessionContext.Provider value={value}>{children}</SessionContext.Provider>;

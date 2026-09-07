@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import type { TKey } from "./i18n";
 import type { CategoryId } from "./expenses";
+import { useSession } from "@/lib/session";
 
 export type QuickActionItem = {
   id: string;
@@ -63,20 +64,20 @@ function read<T>(key: string, fallback: T): T {
   }
 }
 
-function hydrate() {
+function hydrate(suffix: string) {
   if (hydrated || typeof window === "undefined") return;
   hydrated = true;
   store = {
-    quick: read(QUICK_KEY, DEFAULT_QUICK_ACTIONS),
-    tags: read(TAGS_KEY, DEFAULT_TAGS),
+    quick: read(`${QUICK_KEY}:${suffix}`, DEFAULT_QUICK_ACTIONS),
+    tags: read(`${TAGS_KEY}:${suffix}`, DEFAULT_TAGS),
   };
 }
 
-function commit(next: Store) {
+function commit(next: Store, suffix: string) {
   store = next;
   try {
-    window.localStorage.setItem(QUICK_KEY, JSON.stringify(next.quick));
-    window.localStorage.setItem(TAGS_KEY, JSON.stringify(next.tags));
+    window.localStorage.setItem(`${QUICK_KEY}:${suffix}`, JSON.stringify(next.quick));
+    window.localStorage.setItem(`${TAGS_KEY}:${suffix}`, JSON.stringify(next.tags));
   } catch {
     /* storage unavailable */
   }
@@ -84,35 +85,38 @@ function commit(next: Store) {
 }
 
 export function useCustomLists() {
+  const { user } = useSession();
+  const suffix = user?.id ?? "anonymous";
   const [state, setState] = useState<Store>(store);
 
   useEffect(() => {
-    hydrate();
+    hydrated = false;
+    hydrate(suffix);
     setState(store);
     const listener = (s: Store) => setState(s);
     listeners.add(listener);
     return () => {
       listeners.delete(listener);
     };
-  }, []);
+  }, [suffix]);
 
   return {
     quickActions: state.quick,
     tags: state.tags,
     addQuickAction: (label: string, category: CategoryId) =>
-      commit({ ...store, quick: [...store.quick, { id: newId(), label, category }] }),
+      commit({ ...store, quick: [...store.quick, { id: newId(), label, category }] }, suffix),
     updateQuickAction: (id: string, label: string, category: CategoryId) =>
       commit({
         ...store,
         quick: store.quick.map((q) =>
           q.id === id ? { id: q.id, label, category } : q,
         ),
-      }),
+      }, suffix),
     removeQuickAction: (id: string) =>
-      commit({ ...store, quick: store.quick.filter((q) => q.id !== id) }),
+      commit({ ...store, quick: store.quick.filter((q) => q.id !== id) }, suffix),
     addTag: (label: string) =>
-      commit({ ...store, tags: [...store.tags, { id: newId(), label }] }),
+      commit({ ...store, tags: [...store.tags, { id: newId(), label }] }, suffix),
     removeTag: (id: string) =>
-      commit({ ...store, tags: store.tags.filter((x) => x.id !== id) }),
+      commit({ ...store, tags: store.tags.filter((x) => x.id !== id) }, suffix),
   };
 }

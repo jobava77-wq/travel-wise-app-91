@@ -31,16 +31,16 @@ export const Route = createFileRoute("/about")({
 
 function AboutPage() {
   const { t } = useI18n();
-  const { pin, username } = useSession();
+  const { user, username } = useSession();
   const [message, setMessage] = useState("");
   const [sending, setSending] = useState(false);
 
   const submit = async () => {
     const text = message.trim();
-    if (text.length === 0 || sending) return;
+    if (text.length === 0 || sending || !user) return;
     setSending(true);
     const { error } = await supabase.from("feedback").insert({
-      owner_pin: pin ?? "",
+      owner_id: user.id,
       owner_name: username ?? "",
       message: text.slice(0, 2000),
     });

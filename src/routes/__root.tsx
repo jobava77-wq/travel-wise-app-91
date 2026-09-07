@@ -15,7 +15,7 @@ import { I18nProvider } from "@/lib/i18n";
 import { ExpensesProvider } from "@/lib/expenses";
 import { RatesProvider } from "@/lib/rates";
 import { SessionProvider, useSession } from "@/lib/session";
-import { PinGate } from "@/components/PinGate";
+import { AuthScreen } from "@/components/AuthScreen";
 import { BottomNav } from "@/components/BottomNav";
 import { Toaster } from "@/components/ui/sonner";
 import { WhatsNew } from "@/components/WhatsNew";
@@ -143,14 +143,14 @@ function RootShell({ children }: { children: ReactNode }) {
 }
 
 function AppShell() {
-  const { ready, pin } = useSession();
+  const { ready, user } = useSession();
 
   return (
     <ExpensesProvider>
       {!ready ? (
         <div className="min-h-screen bg-background" />
-      ) : !pin ? (
-        <PinGate />
+      ) : !user ? (
+        <AuthScreen />
       ) : (
         <>
           <div className="min-h-screen bg-background">
@@ -171,12 +171,12 @@ function RootComponent() {
   return (
     <QueryClientProvider client={queryClient}>
       <I18nProvider>
-        <RatesProvider>
-          <SessionProvider>
+        <SessionProvider>
+          <RatesProvider>
             <AppShell />
             <Toaster position="top-center" />
-          </SessionProvider>
-        </RatesProvider>
+          </RatesProvider>
+        </SessionProvider>
       </I18nProvider>
     </QueryClientProvider>
   );

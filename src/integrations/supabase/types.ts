@@ -28,6 +28,7 @@ export type Database = {
           tags: string[]
           title: string
           trip_id: string
+          owner_id: string | null
         }
         Insert: {
           amount?: number
@@ -42,6 +43,7 @@ export type Database = {
           tags?: string[]
           title?: string
           trip_id?: string
+          owner_id?: string | null
         }
         Update: {
           amount?: number
@@ -56,6 +58,7 @@ export type Database = {
           tags?: string[]
           title?: string
           trip_id?: string
+          owner_id?: string | null
         }
         Relationships: [
           {
@@ -72,6 +75,7 @@ export type Database = {
           created_at: string
           id: string
           message: string
+          owner_id: string | null
           owner_name: string
           owner_pin: string
         }
@@ -79,6 +83,7 @@ export type Database = {
           created_at?: string
           id?: string
           message: string
+          owner_id?: string | null
           owner_name?: string
           owner_pin?: string
         }
@@ -86,6 +91,7 @@ export type Database = {
           created_at?: string
           id?: string
           message?: string
+          owner_id?: string | null
           owner_name?: string
           owner_pin?: string
         }
@@ -101,6 +107,7 @@ export type Database = {
           lng: number | null
           location_name: string | null
           name: string
+          owner_id: string | null
           owner_name: string
           owner_pin: string
           start_date: string
@@ -114,6 +121,7 @@ export type Database = {
           lng?: number | null
           location_name?: string | null
           name: string
+          owner_id?: string | null
           owner_name?: string
           owner_pin?: string
           start_date?: string
@@ -127,6 +135,7 @@ export type Database = {
           lng?: number | null
           location_name?: string | null
           name?: string
+          owner_id?: string | null
           owner_name?: string
           owner_pin?: string
           start_date?: string

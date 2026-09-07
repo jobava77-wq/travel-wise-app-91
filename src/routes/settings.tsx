@@ -29,7 +29,7 @@ export const Route = createFileRoute("/settings")({
 
 function SettingsPage() {
   const { t } = useI18n();
-  const { username, signOut } = useSession();
+  const { user, username, signOut } = useSession();
 
   return (
     <>
@@ -40,12 +40,19 @@ function SettingsPage() {
           <LanguageToggle />
         </section>
 
-        {username && (
-          <section className="ios-card p-5">
-            <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-              {t("username")}
-            </p>
-            <p className="mt-1 text-sm font-bold">{username}</p>
+        {user && (
+          <section className="ios-card flex items-center gap-3 p-5">
+            {user.user_metadata?.avatar_url ? (
+              <img src={user.user_metadata.avatar_url} alt="" className="size-11 rounded-full object-cover" />
+            ) : (
+              <div className="flex size-11 items-center justify-center rounded-full bg-primary text-lg font-extrabold text-primary-foreground">
+                {(username ?? "?").slice(0, 1).toUpperCase()}
+              </div>
+            )}
+            <div className="min-w-0">
+              <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">{t("account")}</p>
+              <p className="truncate text-sm font-bold">{user.email}</p>
+            </div>
           </section>
         )}
 
@@ -66,12 +73,12 @@ function SettingsPage() {
           variant="secondary"
           className="h-12 w-full rounded-2xl font-bold text-destructive"
           onClick={() => {
-            signOut();
+            void signOut();
             toast.success(t("loggedOut"));
           }}
         >
           <LogOut className="size-4" />
-          {t("logOut")}
+          {t("signOut")}
         </Button>
 
         <p className="pt-2 text-center text-xs font-semibold text-muted-foreground">
