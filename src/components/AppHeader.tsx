@@ -1,8 +1,64 @@
-import type { ReactNode } from "react";
-import { ChevronLeft } from "lucide-react";
+import { useEffect, useState, type ReactNode } from "react";
+import { ChevronLeft, Moon, Sun } from "lucide-react";
 import { Link } from "@tanstack/react-router";
+import { Button } from "@/components/ui/button";
 import { useI18n } from "@/lib/i18n";
 import { cn } from "@/lib/utils";
+
+const THEME_KEY = "theme";
+type Theme = "light" | "dark";
+
+function ThemeToggle() {
+  const { t } = useI18n();
+  const [theme, setTheme] = useState<Theme>("light");
+
+  useEffect(() => {
+    const mediaQuery = window.matchMedia("(prefers-color-scheme: dark)");
+    const savedTheme = window.localStorage.getItem(THEME_KEY);
+    const initialTheme: Theme =
+      savedTheme === "light" || savedTheme === "dark"
+        ? savedTheme
+        : mediaQuery.matches
+          ? "dark"
+          : "light";
+
+    setTheme(initialTheme);
+    document.documentElement.classList.toggle("dark", initialTheme === "dark");
+
+    if (savedTheme === "light" || savedTheme === "dark") return;
+
+    const handleSystemThemeChange = (event: MediaQueryListEvent) => {
+      const nextTheme: Theme = event.matches ? "dark" : "light";
+      setTheme(nextTheme);
+      document.documentElement.classList.toggle("dark", event.matches);
+    };
+    mediaQuery.addEventListener("change", handleSystemThemeChange);
+    return () => mediaQuery.removeEventListener("change", handleSystemThemeChange);
+  }, []);
+
+  const toggleTheme = () => {
+    const nextTheme: Theme = theme === "dark" ? "light" : "dark";
+    setTheme(nextTheme);
+    window.localStorage.setItem(THEME_KEY, nextTheme);
+    document.documentElement.classList.toggle("dark", nextTheme === "dark");
+  };
+
+  const isDark = theme === "dark";
+  const label = isDark ? t("switchToLightMode") : t("switchToDarkMode");
+  return (
+    <Button
+      type="button"
+      variant="ghost"
+      size="icon"
+      onClick={toggleTheme}
+      aria-label={label}
+      title={label}
+      className="rounded-full text-muted-foreground hover:text-foreground"
+    >
+      {isDark ? <Sun aria-hidden /> : <Moon aria-hidden />}
+    </Button>
+  );
+}
 
 export function LanguageToggle() {
   const { lang, setLang } = useI18n();
@@ -58,6 +114,7 @@ export function AppHeader({
           {!back && <h1 className="truncate text-[22px] font-extrabold tracking-tight">{title}</h1>}
         </div>
         <div className="flex shrink-0 items-center gap-2">
+          <ThemeToggle />
           <LanguageToggle />
           {right}
         </div>

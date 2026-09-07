@@ -28,6 +28,8 @@ const dict = {
     ka: "შექმენით მოგზაურობა ხარჯების დასაჯგუფებლად.",
   },
   language: { en: "Language", ka: "ენა" },
+  switchToDarkMode: { en: "Switch to dark mode", ka: "მუქ რეჟიმზე გადართვა" },
+  switchToLightMode: { en: "Switch to light mode", ka: "ნათელ რეჟიმზე გადართვა" },
   rates: { en: "Exchange rates", ka: "გაცვლითი კურსი" },
   clearData: { en: "Clear all expenses", ka: "ყველა ხარჯის წაშლა" },
   cleared: { en: "All expenses removed", ka: "ყველა ხარჯი წაიშალა" },
